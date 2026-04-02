@@ -61,14 +61,15 @@
 
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // Komponen Ikon (Lucide Standalone)
+        // Komponen Ikon (Lucide Standalone) - DIPERBAIKI
         const Icon = ({ name, size = 20, className = "" }) => {
             const iconRef = useRef(null);
             useEffect(() => {
                 if (window.lucide && iconRef.current) {
+                    // Hanya proses ikon di dalam elemen ini saja (root: iconRef.current)
                     window.lucide.createIcons({
+                        root: iconRef.current,
                         attrs: { 
-                            class: className, 
                             'stroke-width': 2.5, 
                             width: size, 
                             height: size 
@@ -76,8 +77,18 @@
                         nameAttr: 'data-lucide'
                     });
                 }
-            }, [name, className, size]);
-            return <span ref={iconRef} className="inline-flex items-center"><i data-lucide={name}></i></span>;
+            }, [name, size]); // ClassName dikeluarkan agar tidak memicu pembuatan ulang ikon global
+            
+            // Animasi diterapkan pada span pembungkus agar tidak merusak pencarian elemen Lucide
+            return (
+                <span 
+                    ref={iconRef} 
+                    className={`inline-flex items-center justify-center transition-all ${className}`}
+                    style={{ minWidth: size, minHeight: size }}
+                >
+                    <i data-lucide={name}></i>
+                </span>
+            );
         };
 
         const App = () => {
@@ -97,7 +108,6 @@
             const [monthFilter, setMonthFilter] = useState('Semua');
             const [yearFilter, setYearFilter] = useState('Semua');
             
-            // Inisialisasi awal dari localStorage agar tidak blank saat reload
             const [sheetUrl, setSheetUrl] = useState(localStorage.getItem('skf_url_manual') || '');
             const [isConfigOpen, setIsConfigOpen] = useState(false);
 
@@ -110,7 +120,6 @@
                 { name: 'November', val: 'Nov' }, { name: 'Desember', val: 'Dec' }
             ];
 
-            // 1. Firebase Authentication
             useEffect(() => {
                 const initAuth = async () => {
                     try {
@@ -120,8 +129,7 @@
                             await signInAnonymously(auth);
                         }
                     } catch (e) {
-                        console.warn("Firebase Auth Terbatas");
-                        setDbLoading(false); // Pastikan loading selesai jika auth gagal
+                        setDbLoading(false);
                     }
                 };
                 initAuth();
@@ -129,21 +137,17 @@
                 return () => unsubscribe();
             }, []);
 
-            // 2. Load Config & Initial Fetch
             useEffect(() => {
-                // Cek memori lokal segera
                 const localUrl = localStorage.getItem('skf_url_manual');
                 if (localUrl) {
                     setSheetUrl(localUrl);
                     fetchData(localUrl);
                     if (!user) setDbLoading(false);
                 } else if (!user && typeof __firebase_config === 'undefined') {
-                    // Jika tidak ada di local dan tidak ada Firebase config (GitHub)
                     setDbLoading(false);
                     setIsConfigOpen(true);
                 }
 
-                // Jika user Firebase tersedia, sinkronkan dengan Firestore
                 if (user) {
                     const loadConfigFromDB = async () => {
                         try {
@@ -166,7 +170,6 @@
                 }
             }, [user]);
 
-            // Parser CSV
             const robustCSVParser = (text) => {
                 const lines = [];
                 let currentRow = [];
@@ -230,7 +233,6 @@
                     const jsonData = parseToJSON(csvLines);
                     setData(jsonData);
                     setIsConfigOpen(false);
-                    // Simpan ke local memori
                     localStorage.setItem('skf_url_manual', targetUrl);
                 } catch (err) {
                     setError("Gagal sinkronisasi data. Periksa koneksi internet dan link CSV Anda.");
@@ -241,9 +243,7 @@
 
             const handleConnect = async () => {
                 setLoading(true);
-                // Simpan ke local dulu untuk kepastian
                 localStorage.setItem('skf_url_manual', sheetUrl);
-                
                 try {
                     if (user && safeFirebaseConfig.apiKey !== "fallback") {
                         const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'spreadsheet');
@@ -254,7 +254,6 @@
                     }
                     await fetchData(sheetUrl);
                 } catch (e) {
-                    // Jika Firebase gagal, tetap lanjut ke fetch data karena sudah ada di localStorage
                     await fetchData(sheetUrl);
                 } finally {
                     setLoading(false);
