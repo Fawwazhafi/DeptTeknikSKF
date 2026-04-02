@@ -3,493 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dept. Teknik SKF</title>
+    <title>Dept. Teknik SKF - Monitoring</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1.2em;
+        }
+    </style>
 </head>
-<body>
+<body class="bg-slate-50">
     <div id="root"></div>
 
     <script type="text/babel">
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
-import { 
-  Search, 
-  Filter, 
-  RefreshCw, 
-  Settings, 
-  AlertCircle, 
-  Wrench, 
-  FileText, 
-  AlertTriangle, 
-  Database,
-  ArrowRight,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  ShieldCheck,
-  User,
-  Cpu,
-  PackageSearch,
-  Share2,
-  Save,
-  Loader2,
-  Info // Menambahkan Info yang sebelumnya menyebabkan ReferenceError
-} from 'lucide-react';
+        const { useState, useEffect, useMemo, useRef } = React;
 
-// --- Konfigurasi Firebase ---
-const firebaseConfig = JSON.parse(__firebase_config);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // Komponen Ikon Sederhana (Pengganti Lucide-React agar jalan di HTML biasa)
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const iconRef = useRef(null);
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons({
+                        attrs: {
+                            class: className,
+                            'stroke-width': 2.5,
+                            width: size,
+                            height: size
+                        },
+                        nameAttr: 'data-lucide'
+                    });
+                }
+            }, [name, className, size]);
+            return <i data-lucide={name} className={className}></i>;
+        };
 
-const App = () => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [dbLoading, setDbLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [user, setUser] = useState(null);
-  const [isCapturing, setIsCapturing] = useState(false);
-  
-  const dashboardRef = useRef(null);
-  
-  // State Pencarian Ganda
-  const [searchUser, setSearchUser] = useState('');
-  const [searchProduct, setSearchProduct] = useState('');
-  const [searchMachine, setSearchMachine] = useState('');
-  
-  const [statusFilter, setStatusFilter] = useState('Semua');
-  const [monthFilter, setMonthFilter] = useState('Semua');
-  const [yearFilter, setYearFilter] = useState('Semua');
-  const [sheetUrl, setSheetUrl] = useState('');
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [detectedHeaders, setDetectedHeaders] = useState([]);
+        const App = () => {
+            const [data, setData] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [isCapturing, setIsCapturing] = useState(false);
+            const dashboardRef = useRef(null);
 
-  const listMonths = [
-    { name: 'Januari', val: 'Jan' }, { name: 'Februari', val: 'Feb' },
-    { name: 'Maret', val: 'Mar' }, { name: 'April', val: 'Apr' },
-    { name: 'Mei', val: 'May' }, { name: 'Juni', val: 'Jun' },
-    { name: 'Juli', val: 'Jul' }, { name: 'Agustus', val: 'Aug' },
-    { name: 'September', val: 'Sep' }, { name: 'Oktober', val: 'Oct' },
-    { name: 'November', val: 'Nov' }, { name: 'Desember', val: 'Dec' }
-  ];
+            // Filter States
+            const [searchUser, setSearchUser] = useState('');
+            const [searchProduct, setSearchProduct] = useState('');
+            const [searchMachine, setSearchMachine] = useState('');
+            const [statusFilter, setStatusFilter] = useState('Semua');
+            const [monthFilter, setMonthFilter] = useState('Semua');
+            const [yearFilter, setYearFilter] = useState('Semua');
+            const [sheetUrl, setSheetUrl] = useState(localStorage.getItem('skf_url') || '');
+            const [isConfigOpen, setIsConfigOpen] = useState(!localStorage.getItem('skf_url'));
 
-  // --- 1. Autentikasi Firebase (MANDATORY RULE 3) ---
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (err) {
-        console.error("Auth error:", err);
-      }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
-  }, []);
+            const listMonths = [
+                { name: 'Januari', val: 'Jan' }, { name: 'Februari', val: 'Feb' },
+                { name: 'Maret', val: 'Mar' }, { name: 'April', val: 'Apr' },
+                { name: 'Mei', val: 'May' }, { name: 'Juni', val: 'Jun' },
+                { name: 'Juli', val: 'Jul' }, { name: 'Agustus', val: 'Aug' },
+                { name: 'September', val: 'Sep' }, { name: 'Oktober', val: 'Oct' },
+                { name: 'November', val: 'Nov' }, { name: 'Desember', val: 'Dec' }
+            ];
 
-  // --- 2. Load Link dari Database (MANDATORY RULE 1) ---
-  useEffect(() => {
-    if (!user) return;
+            const fetchData = async (url) => {
+                const targetUrl = url || sheetUrl;
+                if (!targetUrl) return;
+                setLoading(true);
+                setError(null);
+                try {
+                    const response = await fetch(`${targetUrl}&t=${new Date().getTime()}`);
+                    const text = await response.text();
+                    const lines = text.split('\n').filter(l => l.trim() !== '');
+                    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s/g, ''));
+                    
+                    const jsonData = lines.slice(1).map(line => {
+                        const values = line.split(',');
+                        const obj = {};
+                        headers.forEach((header, i) => { obj[header] = values[i]?.replace(/"/g, '').trim() || ''; });
+                        return obj;
+                    });
+                    setData(jsonData);
+                    localStorage.setItem('skf_url', targetUrl);
+                    setIsConfigOpen(false);
+                } catch (err) {
+                    setError("Gagal sinkronisasi. Pastikan link Google Sheet benar.");
+                } finally {
+                    setLoading(false);
+                }
+            };
 
-    const loadSettings = async () => {
-      setDbLoading(true);
-      try {
-        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'connection');
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          const savedUrl = docSnap.data().url;
-          setSheetUrl(savedUrl);
-          fetchDataFromUrl(savedUrl);
-        } else {
-          setIsConfigOpen(true);
-        }
-      } catch (err) {
-        console.error("Load settings error:", err);
-      } finally {
-        setDbLoading(false);
-      }
-    };
-    loadSettings();
-  }, [user]);
+            useEffect(() => { if (sheetUrl) fetchData(); }, []);
 
-  // Load html2canvas dinamis
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-    script.async = true;
-    document.body.appendChild(script);
-    return () => { if (document.body.contains(script)) document.body.removeChild(script); };
-  }, []);
+            const filteredData = useMemo(() => {
+                return data.filter(item => {
+                    const val = (k) => Object.entries(item).find(([key]) => key.includes(k))?.[1] || '';
+                    const matchesUser = val('requested').toLowerCase().includes(searchUser.toLowerCase()) || val('peminta').toLowerCase().includes(searchUser.toLowerCase());
+                    const matchesProduct = val('product').toLowerCase().includes(searchProduct.toLowerCase()) || val('barang').toLowerCase().includes(searchProduct.toLowerCase());
+                    const matchesMachine = val('machine').toLowerCase().includes(searchMachine.toLowerCase()) || val('mesin').toLowerCase().includes(searchMachine.toLowerCase());
+                    const currentStatus = val('status').toUpperCase();
+                    const matchesStatus = statusFilter === 'Semua' || currentStatus === statusFilter;
+                    
+                    const dateStr = val('date') || val('tanggal');
+                    const matchesMonth = monthFilter === 'Semua' || dateStr.includes(monthFilter);
+                    const matchesYear = yearFilter === 'Semua' || dateStr.includes(yearFilter);
 
-  const robustCSVParser = (text) => {
-    const lines = [];
-    let currentRow = [];
-    let currentField = '';
-    let inQuotes = false;
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      const nextChar = text[i + 1];
-      if (char === '"' && inQuotes && nextChar === '"') { currentField += '"'; i++; }
-      else if (char === '"') { inQuotes = !inQuotes; }
-      else if (char === ',' && !inQuotes) { currentRow.push(currentField.trim()); currentField = ''; }
-      else if ((char === '\r' || char === '\n') && !inQuotes) {
-        if (char === '\r' && nextChar === '\n') i++;
-        currentRow.push(currentField.trim());
-        if (currentRow.length > 0) lines.push(currentRow);
-        currentRow = []; currentField = '';
-      } else { currentField += char; }
-    }
-    if (currentField || currentRow.length > 0) { currentRow.push(currentField.trim()); lines.push(currentRow); }
-    return lines;
-  };
+                    return matchesUser && matchesProduct && matchesMachine && matchesStatus && matchesMonth && matchesYear;
+                });
+            }, [data, searchUser, searchProduct, searchMachine, statusFilter, monthFilter, yearFilter]);
 
-  const parseToJSON = (csvLines) => {
-    if (csvLines.length < 2) return [];
-    const rawHeaders = csvLines[0];
-    setDetectedHeaders(rawHeaders);
-    const normalizedHeaders = rawHeaders.map(h => h.toLowerCase().replace(/\s/g, '').replace(/[^a-z0-9]/g, ''));
-    return csvLines.slice(1).map(row => {
-      const obj = {};
-      const findValue = (keywords, excludeKeywords = []) => {
-        let foundIndex = normalizedHeaders.findIndex(h => keywords.some(k => h === k.toLowerCase().replace(/\s/g, '')));
-        if (foundIndex === -1) {
-          foundIndex = normalizedHeaders.findIndex(h => keywords.some(k => h.includes(k.toLowerCase().replace(/\s/g, ''))) && !excludeKeywords.some(ex => h.includes(ex.toLowerCase())));
-        }
-        return foundIndex !== -1 ? (row[foundIndex] || '') : '';
-      };
-      obj.date = findValue(['requestdate', 'tanggal', 'date', 'waktu']);
-      obj.requestedBy = findValue(['requestedby', 'peminta', 'nama', 'user']);
-      obj.rcpId = findValue(['rcpid', 'norcp', 'rcpno'], ['date', 'tanggal']);
-      obj.prId = findValue(['prid', 'nopr', 'prno']);
-      obj.status = findValue(['status', 'progress', 'state']);
-      obj.product = findValue(['product', 'barang', 'sparepart', 'item', 'produk']);
-      obj.qty = findValue(['qty', 'jumlah', 'quantity', 'vol']);
-      obj.unit = findValue(['unitofmeasure', 'unit', 'satuan']);
-      obj.machine = findValue(['machineline', 'mesin', 'line', 'area']);
-      return obj;
-    });
-  };
+            const rcpStats = useMemo(() => {
+                const stats = { DONE: new Set(), APPROVED: new Set(), CONFIRMED: new Set(), CANCELED: new Set() };
+                filteredData.forEach(item => {
+                    const status = Object.entries(item).find(([k]) => k.includes('status'))?.[1]?.toUpperCase();
+                    const id = Object.entries(item).find(([k]) => k.includes('rcp'))?.[1] || Math.random();
+                    if (stats[status]) stats[status].add(id);
+                });
+                return { DONE: stats.DONE.size, APPROVED: stats.APPROVED.size, CONFIRMED: stats.CONFIRMED.size, CANCELED: stats.CANCELED.size };
+            }, [filteredData]);
 
-  const fetchDataFromUrl = async (url) => {
-    if (!url) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`${url}&t=${new Date().getTime()}`);
-      if (!response.ok) throw new Error("Gagal mengambil data. Cek URL CSV Anda.");
-      const text = await response.text();
-      const csvLines = robustCSVParser(text);
-      setData(parseToJSON(csvLines));
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+            const handleShare = async () => {
+                setIsCapturing(true);
+                const canvas = await html2canvas(dashboardRef.current, { scale: 2, backgroundColor: '#f8fafc' });
+                const link = document.createElement('a');
+                link.download = `SKF-Report-${new Date().toLocaleDateString()}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                setIsCapturing(false);
+            };
 
-  // --- 3. Simpan Link ke Database (MANDATORY RULE 1) ---
-  const handleSaveConnection = async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'connection');
-      await setDoc(docRef, { 
-        url: sheetUrl, 
-        updatedBy: user.uid,
-        updatedAt: new Date().toISOString()
-      });
-      setIsConfigOpen(false);
-      fetchDataFromUrl(sheetUrl);
-    } catch (err) {
-      setError("Gagal menyimpan ke database: " + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+            return (
+                <div className="min-h-screen pb-20">
+                    <header className="bg-[#1e3a8a] text-white p-6 sticky top-0 z-20 shadow-xl flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-white p-2 rounded-lg text-blue-900"><Icon name="wrench" /></div>
+                            <div>
+                                <h1 className="font-extrabold text-xl uppercase tracking-tighter">Dept. Teknik SKF</h1>
+                                <p className="text-[10px] opacity-70 font-bold uppercase tracking-widest">Inventory Monitoring</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={() => setIsConfigOpen(true)} className="p-3 bg-blue-800 rounded-xl hover:bg-blue-700 transition-all"><Icon name="settings" size={20} /></button>
+                            <button onClick={() => fetchData()} className="bg-white text-blue-900 px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-105 transition-all">
+                                <Icon name="refresh-cw" size={18} className={loading ? "animate-spin" : ""} />
+                                SYNC SHEET
+                            </button>
+                        </div>
+                    </header>
 
-  const availableYears = useMemo(() => {
-    const years = data.map(item => {
-      const parts = item.date?.split('-');
-      return parts && parts.length === 3 ? parts[2] : null;
-    }).filter(y => y !== null);
-    return [...new Set(years)].sort((a, b) => b - a);
-  }, [data]);
+                    <main className="max-w-[1400px] mx-auto p-6 space-y-6">
+                        {isConfigOpen && (
+                            <div className="bg-white p-8 rounded-3xl border-2 border-blue-100 shadow-2xl animate-bounce-in">
+                                <h2 className="text-xl font-black mb-4 flex items-center gap-2"><Icon name="database" className="text-blue-600" /> Setup Database Link</h2>
+                                <div className="flex gap-4">
+                                    <input type="text" placeholder="Paste Google Sheet CSV URL..." className="flex-1 p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-4 focus:ring-blue-100" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} />
+                                    <button onClick={() => fetchData()} className="bg-blue-900 text-white px-8 rounded-2xl font-black uppercase">Hubungkan</button>
+                                </div>
+                            </div>
+                        )}
 
-  const filteredData = useMemo(() => {
-    return data.filter(item => {
-      const matchesUser = item.requestedBy?.toLowerCase().includes(searchUser.toLowerCase());
-      const matchesProduct = item.product?.toLowerCase().includes(searchProduct.toLowerCase());
-      const matchesMachine = item.machine?.toLowerCase().includes(searchMachine.toLowerCase());
-      const matchesStatus = statusFilter === 'Semua' || (item.status && item.status.toUpperCase() === statusFilter.toUpperCase());
-      const dateParts = item.date?.split('-'); 
-      const matchesMonth = monthFilter === 'Semua' || (dateParts && dateParts[1] === monthFilter);
-      const matchesYear = yearFilter === 'Semua' || (dateParts && dateParts[2] === yearFilter);
-      return matchesUser && matchesProduct && matchesMachine && matchesStatus && matchesMonth && matchesYear;
-    });
-  }, [data, searchUser, searchProduct, searchMachine, statusFilter, monthFilter, yearFilter]);
+                        <div ref={dashboardRef}>
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                                <StatCard label="DONE" count={rcpStats.DONE} color="emerald" icon="check-circle" />
+                                <StatCard label="APPROVED" count={rcpStats.APPROVED} color="amber" icon="shield-check" />
+                                <StatCard label="CONFIRMED" count={rcpStats.CONFIRMED} color="blue" icon="clock" />
+                                <StatCard label="CANCELED" count={rcpStats.CANCELED} color="red" icon="x-circle" />
+                            </div>
 
-  const rcpStats = useMemo(() => {
-    const statusGroups = { DONE: new Set(), APPROVED: new Set(), CONFIRMED: new Set(), CANCELED: new Set() };
-    filteredData.forEach(item => {
-      const status = item.status?.toUpperCase();
-      const id = item.rcpId || `row-${Math.random()}`; 
-      if (statusGroups.hasOwnProperty(status)) statusGroups[status].add(id);
-    });
-    return { DONE: statusGroups.DONE.size, APPROVED: statusGroups.APPROVED.size, CONFIRMED: statusGroups.CONFIRMED.size, CANCELED: statusGroups.CANCELED.size };
-  }, [filteredData]);
+                            <div className="bg-white p-6 rounded-[2rem] border shadow-sm space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <SearchInput icon="user" placeholder="Requested By..." value={searchUser} onChange={setSearchUser} />
+                                    <SearchInput icon="package-search" placeholder="Product / Sparepart..." value={searchProduct} onChange={setSearchProduct} />
+                                    <SearchInput icon="cpu" placeholder="Machine Line..." value={searchMachine} onChange={setSearchMachine} />
+                                </div>
 
-  const handleShareAsImage = async () => {
-    if (!window.html2canvas) return;
-    setIsCapturing(true);
-    try {
-      const canvas = await window.html2canvas(dashboardRef.current, { scale: 2, backgroundColor: '#f8fafc', useCORS: true });
-      const image = canvas.toDataURL("image/png");
-      const link = document.createElement('a');
-      link.download = `SKF-Report-${new Date().toISOString().slice(0, 10)}.png`;
-      link.href = image;
-      link.click();
-    } catch (err) { console.error(err); } 
-    finally { setIsCapturing(false); }
-  };
+                                <div className="flex flex-wrap gap-3 items-center">
+                                    <select className="bg-slate-100 p-3 rounded-2xl font-bold text-xs w-48" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                                        <option value="Semua">FILTER: STATUS</option>
+                                        <option value="DONE">DONE</option>
+                                        <option value="APPROVED">APPROVED</option>
+                                        <option value="CONFIRMED">CONFIRMED</option>
+                                        <option value="CANCELED">CANCELED</option>
+                                    </select>
+                                    <select className="bg-slate-100 p-3 rounded-2xl font-bold text-xs w-48" value={monthFilter} onChange={e => setMonthFilter(e.target.value)}>
+                                        <option value="Semua">FILTER: BULAN</option>
+                                        {listMonths.map(m => <option key={m.val} value={m.val}>{m.name}</option>)}
+                                    </select>
+                                    <button onClick={handleShare} className="ml-auto bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-black transition-all">
+                                        <Icon name="share-2" size={18} /> SHARE VIEW (PNG)
+                                    </button>
+                                </div>
 
-  const getStatusStyle = (status) => {
-    const s = status?.toUpperCase() || '';
-    if (s.includes('DONE')) return 'bg-emerald-600 text-white border-emerald-700';
-    if (s.includes('APPROV')) return 'bg-amber-800 text-white border-amber-900';
-    if (s.includes('CANCEL')) return 'bg-red-700 text-white border-red-800';
-    if (s.includes('CONFIRM')) return 'bg-slate-700 text-white border-slate-800';
-    if (s.includes('DRAFT')) return 'bg-yellow-50 text-yellow-700 border-yellow-200 font-bold';
-    return 'bg-gray-100 text-gray-400 border-gray-200';
-  };
+                                <div className="overflow-x-auto rounded-2xl border">
+                                    <table className="w-full text-left text-xs">
+                                        <thead className="bg-slate-50 border-b">
+                                            <tr>
+                                                <th className="p-4 uppercase font-black opacity-50">Date</th>
+                                                <th className="p-4 uppercase font-black opacity-50">Requested By</th>
+                                                <th className="p-4 uppercase font-black opacity-50">RCP ID</th>
+                                                <th className="p-4 uppercase font-black opacity-50 text-center">Status</th>
+                                                <th className="p-4 uppercase font-black opacity-50">Product</th>
+                                                <th className="p-4 uppercase font-black opacity-50 text-center">Qty</th>
+                                                <th className="p-4 uppercase font-black opacity-50">Machine</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {filteredData.map((item, i) => (
+                                                <tr key={i} className="hover:bg-blue-50 transition-colors">
+                                                    <td className="p-4 font-bold text-slate-400">{Object.values(item)[0]}</td>
+                                                    <td className="p-4 font-black">{Object.values(item)[1]}</td>
+                                                    <td className="p-4 text-blue-600 font-bold underline">{Object.values(item)[2]}</td>
+                                                    <td className="p-4 text-center">
+                                                        <span className={`px-3 py-1 rounded-full font-black text-[10px] ${item.status?.includes('DONE') ? 'bg-emerald-500 text-white' : 'bg-slate-200'}`}>
+                                                            {item.status || 'N/A'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 font-black uppercase">{item.product || item.barang}</td>
+                                                    <td className="p-4 text-center font-black">{item.qty || item.jumlah}</td>
+                                                    <td className="p-4 font-bold opacity-60 italic">{item.machineline || item.mesin}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
 
-  if (dbLoading && !user) {
-    return (
-      <div className="min-h-screen bg-[#1e3a8a] flex flex-col items-center justify-center text-white">
-        <Loader2 className="w-12 h-12 animate-spin mb-4" />
-        <p className="font-bold tracking-widest uppercase text-xs">Mempersiapkan Database...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
-      <header className="bg-[#1e3a8a] border-b border-blue-900 sticky top-0 z-20 shadow-md">
-        <div className="max-w-[1600px] mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="bg-white p-2.5 rounded-xl shadow-inner"><Wrench size={24} className="text-[#1e3a8a]" /></div>
-            <div>
-              <h1 className="text-xl font-extrabold tracking-tight text-white uppercase leading-tight">Dept. Teknik SKF</h1>
-              <p className="text-blue-200 text-[10px] font-bold tracking-[0.2em] uppercase opacity-80">Inventory Request Monitoring</p>
+        const StatCard = ({ label, count, color, icon }) => (
+            <div className={`bg-white p-6 rounded-3xl border border-${color}-100 flex items-center gap-4 shadow-sm`}>
+                <div className={`bg-${color}-50 p-3 rounded-xl text-${color}-600`}><Icon name={icon} size={28} /></div>
+                <div>
+                    <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">{label}</p>
+                    <h3 className={`text-2xl font-black text-${color}-600`}>{count}</h3>
+                </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => setIsConfigOpen(!isConfigOpen)} className="p-3 bg-blue-800/50 hover:bg-blue-700 rounded-xl transition-all text-white border border-blue-700/50">
-              <Settings size={20} />
-            </button>
-            <button onClick={() => fetchDataFromUrl(sheetUrl)} disabled={loading || !sheetUrl} className="flex items-center gap-2 bg-white hover:bg-blue-50 text-[#1e3a8a] px-6 py-3 rounded-xl transition-all font-bold disabled:opacity-50 shadow-lg active:scale-95">
-              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-              {loading ? 'MEMUAT...' : 'SYNC SHEET'}
-            </button>
-          </div>
-        </div>
-      </header>
+        );
 
-      <main className="max-w-[1600px] mx-auto px-6 py-8">
-        {/* Modal Konfigurasi Database */}
-        {isConfigOpen && (
-          <div className="mb-8 bg-white p-8 rounded-3xl border border-blue-100 shadow-2xl animate-in fade-in zoom-in duration-300">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
-                <Database size={28} className="text-blue-600" /> Pengaturan Koneksi Permanen
-              </h2>
-              <button onClick={() => setIsConfigOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold">TUTUP</button>
+        const SearchInput = ({ icon, placeholder, value, onChange }) => (
+            <div className="relative">
+                <Icon name={icon} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                <input type="text" placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} className="w-full pl-12 p-4 bg-slate-50 border rounded-2xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-50" />
             </div>
-            <div className="flex flex-col md:flex-row gap-4">
-              <input 
-                type="text" 
-                placeholder="Tempel URL CSV Google Sheet di sini..." 
-                value={sheetUrl} 
-                onChange={(e) => setSheetUrl(e.target.value)} 
-                className="flex-1 px-5 py-4 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none bg-slate-50 font-bold text-slate-700" 
-              />
-              <button 
-                onClick={handleSaveConnection}
-                disabled={loading || !sheetUrl}
-                className="bg-[#1e3a8a] text-white px-10 py-4 rounded-2xl hover:bg-black transition-all font-black shadow-xl uppercase tracking-wider flex items-center gap-2"
-              >
-                {loading ? <RefreshCw className="animate-spin" /> : <Save size={20} />}
-                SIMPAN KE DATABASE
-              </button>
-            </div>
-            <p className="mt-4 text-xs text-blue-600 font-bold flex items-center gap-2">
-              <Info size={14} /> Link ini akan disimpan secara permanen. Klik SYNC SHEET di masa mendatang untuk memuat data terbaru.
-            </p>
-          </div>
-        )}
+        );
 
-        <div className="space-y-6">
-          {/* Ringkasan Statistik */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-6 rounded-3xl border border-emerald-100 shadow-sm flex items-center gap-5 group hover:shadow-md transition-shadow">
-              <div className="bg-emerald-50 p-4 rounded-2xl text-emerald-600 group-hover:scale-110 transition-transform"><CheckCircle2 size={32} /></div>
-              <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">DONE (RCP UNIQUE)</p><h3 className="text-3xl font-black text-emerald-600">{rcpStats.DONE}</h3></div>
-            </div>
-            <div className="bg-white p-6 rounded-3xl border border-amber-100 shadow-sm flex items-center gap-5 group hover:shadow-md transition-shadow">
-              <div className="bg-amber-50 p-4 rounded-2xl text-amber-700 group-hover:scale-110 transition-transform"><ShieldCheck size={32} /></div>
-              <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">APPROVED (RCP UNIQUE)</p><h3 className="text-3xl font-black text-amber-800">{rcpStats.APPROVED}</h3></div>
-            </div>
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-5 group hover:shadow-md transition-shadow">
-              <div className="bg-slate-50 p-4 rounded-2xl text-slate-600 group-hover:scale-110 transition-transform"><Clock size={32} /></div>
-              <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">CONFIRMED (RCP UNIQUE)</p><h3 className="text-3xl font-black text-slate-700">{rcpStats.CONFIRMED}</h3></div>
-            </div>
-            <div className="bg-white p-6 rounded-3xl border border-red-100 shadow-sm flex items-center gap-5 group hover:shadow-md transition-shadow">
-              <div className="bg-red-50 p-4 rounded-2xl text-red-600 group-hover:scale-110 transition-transform"><XCircle size={32} /></div>
-              <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">CANCELED (RCP UNIQUE)</p><h3 className="text-3xl font-black text-red-600">{rcpStats.CANCELED}</h3></div>
-            </div>
-          </div>
-
-          {/* Pencarian Ganda */}
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <Search size={18} className="text-blue-600" />
-              <h2 className="text-xs font-black text-slate-800 uppercase tracking-widest">Fitur Pencarian</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="relative group">
-                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors" />
-                <input type="text" placeholder="Requested By..." value={searchUser} onChange={(e) => setSearchUser(e.target.value)} className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-sm focus:ring-2 focus:ring-blue-100" />
-              </div>
-              <div className="relative group">
-                <PackageSearch size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors" />
-                <input type="text" placeholder="Product / Sparepart..." value={searchProduct} onChange={(e) => setSearchProduct(e.target.value)} className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-sm focus:ring-2 focus:ring-blue-100" />
-              </div>
-              <div className="relative group">
-                <Cpu size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors" />
-                <input type="text" placeholder="Machine Line..." value={searchMachine} onChange={(e) => setSearchMachine(e.target.value)} className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-sm focus:ring-2 focus:ring-blue-100" />
-              </div>
-            </div>
-          </div>
-
-          {/* Filter Bar */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-3xl px-5 py-3 shadow-sm min-w-[200px]">
-              <Filter size={18} className="text-slate-400" />
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-transparent text-xs font-black outline-none cursor-pointer w-full text-slate-700 uppercase">
-                <option value="Semua">FILTER: STATUS</option>
-                <option value="DONE">DONE</option>
-                <option value="APPROVED">APPROVED</option>
-                <option value="CONFIRMED">CONFIRMED</option>
-                <option value="CANCELED">CANCELED</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-3xl px-5 py-3 shadow-sm min-w-[200px]">
-              <Calendar size={18} className="text-slate-400" />
-              <select value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} className="bg-transparent text-xs font-black outline-none cursor-pointer w-full text-slate-700 uppercase">
-                <option value="Semua">FILTER: BULAN</option>
-                {listMonths.map(m => <option key={m.val} value={m.val}>{m.name.toUpperCase()}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-3xl px-5 py-3 shadow-sm min-w-[150px]">
-              <Calendar size={18} className="text-slate-400" />
-              <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="bg-transparent text-xs font-black outline-none cursor-pointer w-full text-slate-700 uppercase">
-                <option value="Semua">FILTER: TAHUN</option>
-                {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
-              </select>
-            </div>
-            <button 
-              onClick={handleShareAsImage} 
-              disabled={isCapturing || data.length === 0} 
-              className={`ml-auto px-8 rounded-3xl transition-all h-[52px] flex items-center gap-3 font-black text-xs shadow-lg uppercase tracking-widest active:scale-95 ${isCapturing ? 'bg-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
-            >
-              {isCapturing ? <RefreshCw className="animate-spin" /> : <Share2 size={20} />}
-              SHARE VIEW (PNG)
-            </button>
-          </div>
-
-          {/* Area Tabel */}
-          <div ref={dashboardRef} className="rounded-[2.5rem] bg-slate-50">
-            <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[1400px]">
-                  <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-100">
-                      <th className="px-6 py-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Date</th>
-                      <th className="px-6 py-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Requested By</th>
-                      <th className="px-6 py-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">RCP ID</th>
-                      <th className="px-6 py-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-                      <th className="px-6 py-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Product / Sparepart</th>
-                      <th className="px-6 py-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Qty</th>
-                      <th className="px-6 py-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Machine Line</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {filteredData.length === 0 ? (
-                      <tr><td colSpan="7" className="p-20 text-center opacity-30 uppercase font-black tracking-widest">Data Tidak Ditemukan</td></tr>
-                    ) : (
-                      filteredData.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-blue-50/50 transition-all">
-                          <td className="px-6 py-5 whitespace-nowrap text-xs font-bold text-slate-400">{item.date || '-'}</td>
-                          <td className="px-6 py-5 whitespace-nowrap text-xs font-black text-slate-700">{item.requestedBy || '-'}</td>
-                          <td className="px-6 py-5 whitespace-nowrap">
-                            <span className="text-[11px] font-black text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">{item.rcpId || '-'}</span>
-                          </td>
-                          <td className="px-6 py-5 whitespace-nowrap text-center">
-                            <span className={`inline-block min-w-[110px] px-3 py-2 rounded-xl text-[10px] font-black border text-center uppercase shadow-sm ${getStatusStyle(item.status)}`}>
-                              {item.status || 'N/A'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-5 text-sm font-black text-slate-900 uppercase">{item.product || 'N/A'}</td>
-                          <td className="px-6 py-5 whitespace-nowrap text-sm font-black text-center text-blue-900">{item.qty || '0'} {item.unit}</td>
-                          <td className="px-6 py-5 whitespace-nowrap text-xs font-black text-slate-500 italic">{item.machine || 'UMUM'}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {error && (
-          <div className="fixed bottom-5 left-1/2 -translate-x-1/2 bg-red-600 text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50">
-            <AlertCircle size={24} /> {error}
-            <button onClick={() => setError(null)} className="ml-4 opacity-50 hover:opacity-100 text-xs">TUTUP</button>
-          </div>
-        )}
-      </main>
-
-      <footer className="max-w-[1600px] mx-auto px-6 py-10 border-t border-slate-200 mt-12 flex justify-between items-center opacity-40">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#1e3a8a] rounded-xl flex items-center justify-center text-white shadow-lg"><Wrench size={18} /></div>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#1e3a8a]">SKF Engineering Inventory Log v7.0</p>
-        </div>
-      </footer>
-      
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right center; background-size: 1.2em; }
-      `}</style>
-    </div>
-  );
-};
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
-
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
