@@ -5,17 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dept. Teknik SKF - Monitoring</title>
     
+    <!-- Pustaka Dasar -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
+    <!-- Pustaka Ikon & Screenshot -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.01em; }
         select {
             appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
@@ -23,26 +25,23 @@
             background-position: right 1rem center;
             background-size: 1.2em;
         }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-slate-50">
+<body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // Komponen Ikon Sederhana (Pengganti Lucide-React agar jalan di HTML biasa)
+        // Komponen Ikon (Lucide Standalone)
         const Icon = ({ name, size = 20, className = "" }) => {
-            const iconRef = useRef(null);
             useEffect(() => {
                 if (window.lucide) {
                     window.lucide.createIcons({
-                        attrs: {
-                            class: className,
-                            'stroke-width': 2.5,
-                            width: size,
-                            height: size
-                        },
+                        attrs: { class: className, 'stroke-width': 2.5, width: size, height: size },
                         nameAttr: 'data-lucide'
                     });
                 }
@@ -64,8 +63,9 @@
             const [statusFilter, setStatusFilter] = useState('Semua');
             const [monthFilter, setMonthFilter] = useState('Semua');
             const [yearFilter, setYearFilter] = useState('Semua');
-            const [sheetUrl, setSheetUrl] = useState(localStorage.getItem('skf_url') || '');
-            const [isConfigOpen, setIsConfigOpen] = useState(!localStorage.getItem('skf_url'));
+            
+            const [sheetUrl, setSheetUrl] = useState(localStorage.getItem('skf_url_prod') || '');
+            const [isConfigOpen, setIsConfigOpen] = useState(!localStorage.getItem('skf_url_prod'));
 
             const listMonths = [
                 { name: 'Januari', val: 'Jan' }, { name: 'Februari', val: 'Feb' },
@@ -76,6 +76,57 @@
                 { name: 'November', val: 'Nov' }, { name: 'Desember', val: 'Dec' }
             ];
 
+            // Parser CSV Tangguh (Menangani koma di dalam tanda kutip)
+            const robustCSVParser = (text) => {
+                const lines = [];
+                let currentRow = [];
+                let currentField = '';
+                let inQuotes = false;
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+                    const nextChar = text[i + 1];
+                    if (char === '"' && inQuotes && nextChar === '"') { currentField += '"'; i++; }
+                    else if (char === '"') { inQuotes = !inQuotes; }
+                    else if (char === ',' && !inQuotes) { currentRow.push(currentField.trim()); currentField = ''; }
+                    else if ((char === '\r' || char === '\n') && !inQuotes) {
+                        if (char === '\r' && nextChar === '\n') i++;
+                        currentRow.push(currentField.trim());
+                        if (currentRow.length > 0) lines.push(currentRow);
+                        currentRow = []; currentField = '';
+                    } else { currentField += char; }
+                }
+                if (currentField || currentRow.length > 0) { currentRow.push(currentField.trim()); lines.push(currentRow); }
+                return lines;
+            };
+
+            const parseToJSON = (csvLines) => {
+                if (csvLines.length < 2) return [];
+                const rawHeaders = csvLines[0];
+                const normalizedHeaders = rawHeaders.map(h => h.toLowerCase().replace(/\s/g, '').replace(/[^a-z0-9]/g, ''));
+
+                return csvLines.slice(1).map(row => {
+                    const obj = {};
+                    const findValue = (keywords, excludeKeywords = []) => {
+                        let foundIndex = normalizedHeaders.findIndex(h => keywords.some(k => h === k.toLowerCase().replace(/\s/g, '')));
+                        if (foundIndex === -1) {
+                            foundIndex = normalizedHeaders.findIndex(h => keywords.some(k => h.includes(k.toLowerCase().replace(/\s/g, ''))) && !excludeKeywords.some(ex => h.includes(ex.toLowerCase())));
+                        }
+                        return foundIndex !== -1 ? (row[foundIndex] || '') : '';
+                    };
+
+                    obj.date = findValue(['requestdate', 'tanggal', 'date', 'waktu']);
+                    obj.requestedBy = findValue(['requestedby', 'peminta', 'nama', 'user']);
+                    obj.rcpId = findValue(['rcpid', 'norcp', 'rcpno'], ['date', 'tanggal']);
+                    obj.prId = findValue(['prid', 'nopr', 'prno']);
+                    obj.status = findValue(['status', 'progress', 'state']);
+                    obj.product = findValue(['product', 'barang', 'sparepart', 'item', 'produk']);
+                    obj.qty = findValue(['qty', 'jumlah', 'quantity', 'vol']);
+                    obj.unit = findValue(['unitofmeasure', 'unit', 'satuan']);
+                    obj.machine = findValue(['machineline', 'mesin', 'line', 'area']);
+                    return obj;
+                });
+            };
+
             const fetchData = async (url) => {
                 const targetUrl = url || sheetUrl;
                 if (!targetUrl) return;
@@ -84,20 +135,13 @@
                 try {
                     const response = await fetch(`${targetUrl}&t=${new Date().getTime()}`);
                     const text = await response.text();
-                    const lines = text.split('\n').filter(l => l.trim() !== '');
-                    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s/g, ''));
-                    
-                    const jsonData = lines.slice(1).map(line => {
-                        const values = line.split(',');
-                        const obj = {};
-                        headers.forEach((header, i) => { obj[header] = values[i]?.replace(/"/g, '').trim() || ''; });
-                        return obj;
-                    });
+                    const csvLines = robustCSVParser(text);
+                    const jsonData = parseToJSON(csvLines);
                     setData(jsonData);
-                    localStorage.setItem('skf_url', targetUrl);
+                    localStorage.setItem('skf_url_prod', targetUrl);
                     setIsConfigOpen(false);
                 } catch (err) {
-                    setError("Gagal sinkronisasi. Pastikan link Google Sheet benar.");
+                    setError("Gagal sinkronisasi data dari Google Sheets.");
                 } finally {
                     setLoading(false);
                 }
@@ -105,18 +149,25 @@
 
             useEffect(() => { if (sheetUrl) fetchData(); }, []);
 
+            const availableYears = useMemo(() => {
+                const years = data.map(item => {
+                    const parts = item.date?.split('-');
+                    return parts && parts.length === 3 ? parts[2] : null;
+                }).filter(y => y !== null);
+                return [...new Set(years)].sort((a, b) => b - a);
+            }, [data]);
+
             const filteredData = useMemo(() => {
                 return data.filter(item => {
-                    const val = (k) => Object.entries(item).find(([key]) => key.includes(k))?.[1] || '';
-                    const matchesUser = val('requested').toLowerCase().includes(searchUser.toLowerCase()) || val('peminta').toLowerCase().includes(searchUser.toLowerCase());
-                    const matchesProduct = val('product').toLowerCase().includes(searchProduct.toLowerCase()) || val('barang').toLowerCase().includes(searchProduct.toLowerCase());
-                    const matchesMachine = val('machine').toLowerCase().includes(searchMachine.toLowerCase()) || val('mesin').toLowerCase().includes(searchMachine.toLowerCase());
-                    const currentStatus = val('status').toUpperCase();
-                    const matchesStatus = statusFilter === 'Semua' || currentStatus === statusFilter;
+                    const matchesUser = item.requestedBy?.toLowerCase().includes(searchUser.toLowerCase());
+                    const matchesProduct = item.product?.toLowerCase().includes(searchProduct.toLowerCase());
+                    const matchesMachine = item.machine?.toLowerCase().includes(searchMachine.toLowerCase());
+                    const currentStatus = item.status?.toUpperCase() || '';
+                    const matchesStatus = statusFilter === 'Semua' || currentStatus === statusFilter.toUpperCase();
                     
-                    const dateStr = val('date') || val('tanggal');
-                    const matchesMonth = monthFilter === 'Semua' || dateStr.includes(monthFilter);
-                    const matchesYear = yearFilter === 'Semua' || dateStr.includes(yearFilter);
+                    const dateParts = item.date?.split('-'); 
+                    const matchesMonth = monthFilter === 'Semua' || (dateParts && dateParts[1] === monthFilter);
+                    const matchesYear = yearFilter === 'Semua' || (dateParts && dateParts[2] === yearFilter);
 
                     return matchesUser && matchesProduct && matchesMachine && matchesStatus && matchesMonth && matchesYear;
                 });
@@ -125,138 +176,183 @@
             const rcpStats = useMemo(() => {
                 const stats = { DONE: new Set(), APPROVED: new Set(), CONFIRMED: new Set(), CANCELED: new Set() };
                 filteredData.forEach(item => {
-                    const status = Object.entries(item).find(([k]) => k.includes('status'))?.[1]?.toUpperCase();
-                    const id = Object.entries(item).find(([k]) => k.includes('rcp'))?.[1] || Math.random();
-                    if (stats[status]) stats[status].add(id);
+                    const s = item.status?.toUpperCase() || '';
+                    const id = item.rcpId || Math.random();
+                    if (s.includes('DONE')) stats.DONE.add(id);
+                    else if (s.includes('APPROV')) stats.APPROVED.add(id);
+                    else if (s.includes('CONFIRM')) stats.CONFIRMED.add(id);
+                    else if (s.includes('CANCEL')) stats.CANCELED.add(id);
                 });
                 return { DONE: stats.DONE.size, APPROVED: stats.APPROVED.size, CONFIRMED: stats.CONFIRMED.size, CANCELED: stats.CANCELED.size };
             }, [filteredData]);
 
             const handleShare = async () => {
                 setIsCapturing(true);
-                const canvas = await html2canvas(dashboardRef.current, { scale: 2, backgroundColor: '#f8fafc' });
-                const link = document.createElement('a');
-                link.download = `SKF-Report-${new Date().toLocaleDateString()}.png`;
-                link.href = canvas.toDataURL();
-                link.click();
+                try {
+                    const canvas = await html2canvas(dashboardRef.current, { scale: 2, backgroundColor: '#f8fafc', useCORS: true });
+                    const link = document.createElement('a');
+                    link.download = `SKF-Report-${new Date().toISOString().slice(0, 10)}.png`;
+                    link.href = canvas.toDataURL();
+                    link.click();
+                } catch (e) { console.error(e); }
                 setIsCapturing(false);
+            };
+
+            const getStatusStyle = (status) => {
+                const s = status?.toUpperCase() || '';
+                if (s.includes('DONE')) return 'bg-emerald-600 text-white border-emerald-700 shadow-sm';
+                if (s.includes('APPROV')) return 'bg-amber-800 text-white border-amber-900 shadow-sm';
+                if (s.includes('CANCEL')) return 'bg-red-700 text-white border-red-800 shadow-sm';
+                if (s.includes('CONFIRM')) return 'bg-slate-700 text-white border-slate-800 shadow-sm';
+                return 'bg-slate-100 text-slate-500 border-slate-200';
             };
 
             return (
                 <div className="min-h-screen pb-20">
-                    <header className="bg-[#1e3a8a] text-white p-6 sticky top-0 z-20 shadow-xl flex justify-between items-center">
+                    <header className="bg-[#1e3a8a] text-white p-6 sticky top-0 z-20 shadow-xl flex justify-between items-center border-b border-blue-800">
                         <div className="flex items-center gap-4">
-                            <div className="bg-white p-2 rounded-lg text-blue-900"><Icon name="wrench" /></div>
+                            <div className="bg-white p-2.5 rounded-xl shadow-inner"><Icon name="wrench" className="text-[#1e3a8a]" /></div>
                             <div>
-                                <h1 className="font-extrabold text-xl uppercase tracking-tighter">Dept. Teknik SKF</h1>
-                                <p className="text-[10px] opacity-70 font-bold uppercase tracking-widest">Inventory Monitoring</p>
+                                <h1 className="font-extrabold text-xl uppercase tracking-tight">Dept. Teknik SKF</h1>
+                                <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest leading-none mt-1">Inventory Request Monitoring</p>
                             </div>
                         </div>
                         <div className="flex gap-3">
-                            <button onClick={() => setIsConfigOpen(true)} className="p-3 bg-blue-800 rounded-xl hover:bg-blue-700 transition-all"><Icon name="settings" size={20} /></button>
-                            <button onClick={() => fetchData()} className="bg-white text-blue-900 px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-105 transition-all">
+                            <button onClick={() => setIsConfigOpen(true)} className="p-3 bg-blue-800/50 rounded-xl hover:bg-blue-700 transition-all border border-blue-700/50"><Icon name="settings" size={20} /></button>
+                            <button onClick={() => fetchData()} className="bg-white text-blue-900 px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-105 transition-all shadow-lg active:scale-95">
                                 <Icon name="refresh-cw" size={18} className={loading ? "animate-spin" : ""} />
-                                SYNC SHEET
+                                {loading ? 'SINKRONISASI...' : 'SYNC SHEET'}
                             </button>
                         </div>
                     </header>
 
-                    <main className="max-w-[1400px] mx-auto p-6 space-y-6">
+                    <main className="max-w-[1500px] mx-auto p-6 space-y-8">
                         {isConfigOpen && (
-                            <div className="bg-white p-8 rounded-3xl border-2 border-blue-100 shadow-2xl animate-bounce-in">
-                                <h2 className="text-xl font-black mb-4 flex items-center gap-2"><Icon name="database" className="text-blue-600" /> Setup Database Link</h2>
-                                <div className="flex gap-4">
-                                    <input type="text" placeholder="Paste Google Sheet CSV URL..." className="flex-1 p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-4 focus:ring-blue-100" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} />
-                                    <button onClick={() => fetchData()} className="bg-blue-900 text-white px-8 rounded-2xl font-black uppercase">Hubungkan</button>
+                            <div className="bg-white p-8 rounded-[2.5rem] border-2 border-blue-100 shadow-2xl animate-in fade-in slide-in-from-top-4">
+                                <h2 className="text-xl font-black mb-4 flex items-center gap-3 text-slate-800 uppercase tracking-tight">
+                                    <Icon name="database" className="text-blue-600" /> Setup Spreadsheet Link
+                                </h2>
+                                <div className="flex flex-col md:flex-row gap-4">
+                                    <input type="text" placeholder="Masukkan URL CSV Google Sheet..." className="flex-1 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-600" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} />
+                                    <button onClick={() => fetchData()} className="bg-[#1e3a8a] text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl">Hubungkan</button>
                                 </div>
+                                <p className="text-xs text-slate-400 mt-3 italic">*Gunakan link format CSV dari menu 'Publish to web' di Google Sheets.</p>
                             </div>
                         )}
 
-                        <div ref={dashboardRef}>
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <div ref={dashboardRef} className="space-y-8">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                                 <StatCard label="DONE" count={rcpStats.DONE} color="emerald" icon="check-circle" />
                                 <StatCard label="APPROVED" count={rcpStats.APPROVED} color="amber" icon="shield-check" />
-                                <StatCard label="CONFIRMED" count={rcpStats.CONFIRMED} color="blue" icon="clock" />
+                                <StatCard label="CONFIRMED" count={rcpStats.CONFIRMED} color="slate" icon="clock" />
                                 <StatCard label="CANCELED" count={rcpStats.CANCELED} color="red" icon="x-circle" />
                             </div>
 
-                            <div className="bg-white p-6 rounded-[2rem] border shadow-sm space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                     <SearchInput icon="user" placeholder="Requested By..." value={searchUser} onChange={setSearchUser} />
                                     <SearchInput icon="package-search" placeholder="Product / Sparepart..." value={searchProduct} onChange={setSearchProduct} />
                                     <SearchInput icon="cpu" placeholder="Machine Line..." value={searchMachine} onChange={setSearchMachine} />
                                 </div>
 
-                                <div className="flex flex-wrap gap-3 items-center">
-                                    <select className="bg-slate-100 p-3 rounded-2xl font-bold text-xs w-48" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                                        <option value="Semua">FILTER: STATUS</option>
+                                <div className="flex flex-wrap gap-4 items-center pt-2">
+                                    <select className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] w-full md:w-56 uppercase tracking-wider text-slate-600" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                                        <option value="Semua">STATUS: SEMUA</option>
                                         <option value="DONE">DONE</option>
                                         <option value="APPROVED">APPROVED</option>
                                         <option value="CONFIRMED">CONFIRMED</option>
                                         <option value="CANCELED">CANCELED</option>
                                     </select>
-                                    <select className="bg-slate-100 p-3 rounded-2xl font-bold text-xs w-48" value={monthFilter} onChange={e => setMonthFilter(e.target.value)}>
-                                        <option value="Semua">FILTER: BULAN</option>
-                                        {listMonths.map(m => <option key={m.val} value={m.val}>{m.name}</option>)}
+                                    <select className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] w-full md:w-56 uppercase tracking-wider text-slate-600" value={monthFilter} onChange={e => setMonthFilter(e.target.value)}>
+                                        <option value="Semua">BULAN: SEMUA</option>
+                                        {listMonths.map(m => <option key={m.val} value={m.val}>{m.name.toUpperCase()}</option>)}
                                     </select>
-                                    <button onClick={handleShare} className="ml-auto bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-black transition-all">
-                                        <Icon name="share-2" size={18} /> SHARE VIEW (PNG)
+                                    <select className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] w-full md:w-40 uppercase tracking-wider text-slate-600" value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
+                                        <option value="Semua">TAHUN: SEMUA</option>
+                                        {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                                    </select>
+                                    <button onClick={handleShare} disabled={isCapturing} className="ml-auto bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-black text-[11px] flex items-center gap-3 hover:bg-black transition-all shadow-xl uppercase tracking-widest active:scale-95 disabled:opacity-50">
+                                        <Icon name={isCapturing ? "refresh-cw" : "share-2"} size={18} className={isCapturing ? "animate-spin" : ""} />
+                                        {isCapturing ? 'PROSES...' : 'SHARE VIEW (PNG)'}
                                     </button>
                                 </div>
 
-                                <div className="overflow-x-auto rounded-2xl border">
-                                    <table className="w-full text-left text-xs">
-                                        <thead className="bg-slate-50 border-b">
+                                <div className="overflow-x-auto rounded-[1.5rem] border border-slate-100 custom-scrollbar">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-slate-50 border-b border-slate-100">
                                             <tr>
-                                                <th className="p-4 uppercase font-black opacity-50">Date</th>
-                                                <th className="p-4 uppercase font-black opacity-50">Requested By</th>
-                                                <th className="p-4 uppercase font-black opacity-50">RCP ID</th>
-                                                <th className="p-4 uppercase font-black opacity-50 text-center">Status</th>
-                                                <th className="p-4 uppercase font-black opacity-50">Product</th>
-                                                <th className="p-4 uppercase font-black opacity-50 text-center">Qty</th>
-                                                <th className="p-4 uppercase font-black opacity-50">Machine</th>
+                                                <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                                                <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Requested By</th>
+                                                <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">RCP ID</th>
+                                                <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+                                                <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Product / Sparepart</th>
+                                                <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Qty</th>
+                                                <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Machine Line</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y">
-                                            {filteredData.map((item, i) => (
-                                                <tr key={i} className="hover:bg-blue-50 transition-colors">
-                                                    <td className="p-4 font-bold text-slate-400">{Object.values(item)[0]}</td>
-                                                    <td className="p-4 font-black">{Object.values(item)[1]}</td>
-                                                    <td className="p-4 text-blue-600 font-bold underline">{Object.values(item)[2]}</td>
-                                                    <td className="p-4 text-center">
-                                                        <span className={`px-3 py-1 rounded-full font-black text-[10px] ${item.status?.includes('DONE') ? 'bg-emerald-500 text-white' : 'bg-slate-200'}`}>
-                                                            {item.status || 'N/A'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-4 font-black uppercase">{item.product || item.barang}</td>
-                                                    <td className="p-4 text-center font-black">{item.qty || item.jumlah}</td>
-                                                    <td className="p-4 font-bold opacity-60 italic">{item.machineline || item.mesin}</td>
-                                                </tr>
-                                            ))}
+                                        <tbody className="divide-y divide-slate-50">
+                                            {filteredData.length === 0 ? (
+                                                <tr><td colSpan="7" className="p-20 text-center text-slate-300 font-bold uppercase tracking-widest">Data Tidak Ditemukan</td></tr>
+                                            ) : (
+                                                filteredData.map((item, i) => (
+                                                    <tr key={i} className="hover:bg-blue-50/50 transition-all group">
+                                                        <td className="px-6 py-5 whitespace-nowrap text-[11px] font-bold text-slate-400">{item.date || '-'}</td>
+                                                        <td className="px-6 py-5 whitespace-nowrap text-xs font-black text-slate-700">{item.requestedBy || '-'}</td>
+                                                        <td className="px-6 py-5 whitespace-nowrap">
+                                                            <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
+                                                                {item.rcpId || '-'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-5 whitespace-nowrap text-center">
+                                                            <span className={`inline-block min-w-[100px] px-3 py-2 rounded-xl text-[9px] font-black uppercase text-center border ${getStatusStyle(item.status)}`}>
+                                                                {item.status || 'N/A'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-5 text-sm font-black text-slate-900 uppercase leading-tight max-w-[300px]">
+                                                            {item.product || 'N/A'}
+                                                        </td>
+                                                        <td className="px-6 py-5 whitespace-nowrap text-sm font-black text-center text-[#1e3a8a] bg-blue-50/30">
+                                                            {item.qty || '0'} <span className="text-[9px] font-bold text-slate-400 opacity-50 uppercase">{item.unit || 'PCS'}</span>
+                                                        </td>
+                                                        <td className="px-6 py-5 whitespace-nowrap text-[11px] font-black text-slate-500 italic opacity-80">
+                                                            {item.machine || 'UMUM'}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
                         </div>
                     </main>
+
+                    {error && (
+                        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-red-600 text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 animate-bounce">
+                            <Icon name="alert-triangle" size={24} />
+                            <span className="text-sm">{error}</span>
+                        </div>
+                    )}
                 </div>
             );
         };
 
         const StatCard = ({ label, count, color, icon }) => (
-            <div className={`bg-white p-6 rounded-3xl border border-${color}-100 flex items-center gap-4 shadow-sm`}>
-                <div className={`bg-${color}-50 p-3 rounded-xl text-${color}-600`}><Icon name={icon} size={28} /></div>
+            <div className={`bg-white p-6 rounded-[2rem] border border-${color}-100 flex items-center gap-6 shadow-sm group hover:shadow-md transition-all`}>
+                <div className={`bg-${color}-50 p-4 rounded-2xl text-${color}-600 group-hover:scale-110 transition-transform shadow-inner`}>
+                    <Icon name={icon} size={32} />
+                </div>
                 <div>
-                    <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">{label}</p>
-                    <h3 className={`text-2xl font-black text-${color}-600`}>{count}</h3>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{label} (RCP)</p>
+                    <h3 className={`text-3xl font-black text-${color}-700`}>{count}</h3>
                 </div>
             </div>
         );
 
         const SearchInput = ({ icon, placeholder, value, onChange }) => (
-            <div className="relative">
-                <Icon name={icon} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                <input type="text" placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} className="w-full pl-12 p-4 bg-slate-50 border rounded-2xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-50" />
+            <div className="relative group">
+                <Icon name={icon} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-600 transition-colors" size={20} />
+                <input type="text" placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-50 focus:bg-white transition-all shadow-sm" />
             </div>
         );
 
