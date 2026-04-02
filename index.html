@@ -42,17 +42,24 @@
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
-        // Import modul Firebase dari CDN sebagai modul ES
+        // Import modul Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Konfigurasi Firebase
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
+        // --- PENGAMAN KONFIGURASI ---
+        // Variabel __firebase_config dsb hanya ada di Gemini. 
+        // Untuk GitHub Pages, kita berikan fallback agar tidak error.
+        const safeFirebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: "fallback", authDomain: "fallback", projectId: "fallback" };
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'skf-engineering-prod';
+        const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const app = initializeApp(safeFirebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         const { useState, useEffect, useMemo, useRef } = React;
 
@@ -72,9 +79,7 @@
                     });
                 }
             }, [name, className, size]);
-            
-            // Gunakan span sebagai container agar React tidak bentrok saat Lucide menyisipkan SVG
-            return <span ref={iconRef}><i data-lucide={name} className={className}></i></span>;
+            return <span ref={iconRef} className="inline-flex items-center"><i data-lucide={name}></i></span>;
         };
 
         const App = () => {
@@ -106,17 +111,17 @@
                 { name: 'November', val: 'Nov' }, { name: 'Desember', val: 'Dec' }
             ];
 
-            // 1. Firebase Authentication (MANDATORY RULE 3)
+            // 1. Firebase Authentication
             useEffect(() => {
                 const initAuth = async () => {
                     try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
+                        if (initialToken) {
+                            await signInWithCustomToken(auth, initialToken);
                         } else {
                             await signInAnonymously(auth);
                         }
                     } catch (e) {
-                        console.error("Auth Error:", e);
+                        console.warn("Firestore Mode Terbatas:", e.message);
                     }
                 };
                 initAuth();
@@ -124,15 +129,13 @@
                 return () => unsubscribe();
             }, []);
 
-            // 2. Load Config from Firestore (MANDATORY RULE 1 - Fixed path)
+            // 2. Load Config from Firestore
             useEffect(() => {
                 if (!user) return;
                 
                 const loadConfig = async () => {
                     setDbLoading(true);
                     try {
-                        // Perbaikan RULE 1: Jalur dokumen harus genap (6 segmen)
-                        // artifacts/{appId}/public/data/config_collection/main_doc
                         const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'spreadsheet');
                         const configDoc = await getDoc(docRef);
                         if (configDoc.exists()) {
@@ -140,11 +143,20 @@
                             setSheetUrl(url);
                             fetchData(url);
                         } else {
-                            setIsConfigOpen(true);
+                            // Cek localStorage jika Firestore gagal atau baru
+                            const localUrl = localStorage.getItem('skf_url_manual');
+                            if (localUrl) {
+                                setSheetUrl(localUrl);
+                                fetchData(localUrl);
+                            } else {
+                                setIsConfigOpen(true);
+                            }
                         }
                     } catch (e) {
-                        console.error("Error loading DB config:", e);
-                        setError("Gagal memuat konfigurasi dari database.");
+                        console.error("Error DB:", e);
+                        const localUrl = localStorage.getItem('skf_url_manual');
+                        if (localUrl) { setSheetUrl(localUrl); fetchData(localUrl); }
+                        else { setIsConfigOpen(true); }
                     } finally {
                         setDbLoading(false);
                     }
@@ -216,16 +228,19 @@
                     const jsonData = parseToJSON(csvLines);
                     setData(jsonData);
                     setIsConfigOpen(false);
+                    localStorage.setItem('skf_url_manual', targetUrl);
                 } catch (err) {
-                    setError("Gagal sinkronisasi data dari Google Sheets. Periksa link Anda.");
+                    setError("Gagal sinkronisasi. Periksa kembali link CSV Google Sheet Anda.");
                 } finally {
                     setLoading(false);
                 }
             };
 
-            // 3. Simpan tautan ke Firestore (MANDATORY RULE 1)
             const handleConnect = async () => {
-                if (!user) return;
+                if (!user) {
+                    await fetchData(sheetUrl);
+                    return;
+                }
                 setLoading(true);
                 try {
                     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'spreadsheet');
@@ -235,8 +250,8 @@
                     });
                     await fetchData(sheetUrl);
                 } catch (e) {
-                    console.error(e);
-                    setError("Gagal menyimpan tautan ke database.");
+                    // Jika Firebase gagal (karena config dummy), tetap coba fetch data
+                    await fetchData(sheetUrl);
                 } finally {
                     setLoading(false);
                 }
@@ -257,11 +272,9 @@
                     const matchesMachine = item.machine?.toLowerCase().includes(searchMachine.toLowerCase());
                     const currentStatus = item.status?.toUpperCase() || '';
                     const matchesStatus = statusFilter === 'Semua' || currentStatus === statusFilter.toUpperCase();
-                    
                     const dateStr = item.date || "";
                     const matchesMonth = monthFilter === 'Semua' || dateStr.includes(monthFilter);
                     const matchesYear = yearFilter === 'Semua' || dateStr.includes(yearFilter);
-
                     return matchesUser && matchesProduct && matchesMachine && matchesStatus && matchesMonth && matchesYear;
                 });
             }, [data, searchUser, searchProduct, searchMachine, statusFilter, monthFilter, yearFilter]);
@@ -288,10 +301,7 @@
                     link.download = `SKF-Report-${new Date().toISOString().slice(0, 10)}.png`;
                     link.href = canvas.toDataURL();
                     link.click();
-                } catch (e) { 
-                    console.error(e);
-                    setError("Gagal membuat gambar laporan.");
-                }
+                } catch (e) { setError("Gagal membuat gambar laporan."); }
                 setIsCapturing(false);
             };
 
@@ -304,11 +314,11 @@
                 return 'bg-slate-100 text-slate-500 border-slate-200';
             };
 
-            if (dbLoading && !data.length) {
+            if (dbLoading && !data.length && user) {
                 return (
                     <div className="min-h-screen bg-[#1e3a8a] flex flex-col items-center justify-center text-white p-6">
                         <div className="w-16 h-16 border-4 border-blue-200 border-t-white rounded-full animate-spin mb-4"></div>
-                        <h2 className="text-xl font-black uppercase tracking-widest">SINKRONISASI DATABASE...</h2>
+                        <h2 className="text-xl font-black uppercase tracking-widest">Inisialisasi...</h2>
                     </div>
                 );
             }
@@ -336,9 +346,9 @@
                         {isConfigOpen && (
                             <div className="bg-white p-8 rounded-[2.5rem] border-2 border-blue-100 shadow-2xl animate-in">
                                 <h2 className="text-xl font-black mb-4 flex items-center gap-3 text-slate-800 uppercase tracking-tight">
-                                    <Icon name="database" className="text-blue-600" /> Setup Spreadsheet Link (Permanent)
+                                    <Icon name="database" className="text-blue-600" /> Setup Spreadsheet Link
                                 </h2>
-                                <p className="text-sm text-slate-500 mb-6">Tautan ini akan disimpan di database publik agar tersinkronisasi di semua perangkat.</p>
+                                <p className="text-sm text-slate-500 mb-6">Tautan ini akan digunakan untuk menarik data dari Google Sheets.</p>
                                 <div className="flex flex-col md:flex-row gap-4">
                                     <input type="text" placeholder="Masukkan URL CSV Google Sheet..." className="flex-1 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-600" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} />
                                     <button onClick={handleConnect} disabled={loading || !sheetUrl} className="bg-[#1e3a8a] text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl disabled:opacity-50">
