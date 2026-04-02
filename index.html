@@ -48,8 +48,6 @@
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- PENGAMAN KONFIGURASI ---
-        // Variabel __firebase_config dsb hanya ada di Gemini. 
-        // Untuk GitHub Pages, kita berikan fallback agar tidak error.
         const safeFirebaseConfig = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config) 
             : { apiKey: "fallback", authDomain: "fallback", projectId: "fallback" };
@@ -99,7 +97,8 @@
             const [monthFilter, setMonthFilter] = useState('Semua');
             const [yearFilter, setYearFilter] = useState('Semua');
             
-            const [sheetUrl, setSheetUrl] = useState('');
+            // Inisialisasi awal dari localStorage agar tidak blank saat reload
+            const [sheetUrl, setSheetUrl] = useState(localStorage.getItem('skf_url_manual') || '');
             const [isConfigOpen, setIsConfigOpen] = useState(false);
 
             const listMonths = [
@@ -121,7 +120,8 @@
                             await signInAnonymously(auth);
                         }
                     } catch (e) {
-                        console.warn("Firestore Mode Terbatas:", e.message);
+                        console.warn("Firebase Auth Terbatas");
+                        setDbLoading(false); // Pastikan loading selesai jika auth gagal
                     }
                 };
                 initAuth();
@@ -129,39 +129,41 @@
                 return () => unsubscribe();
             }, []);
 
-            // 2. Load Config from Firestore
+            // 2. Load Config & Initial Fetch
             useEffect(() => {
-                if (!user) return;
-                
-                const loadConfig = async () => {
-                    setDbLoading(true);
-                    try {
-                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'spreadsheet');
-                        const configDoc = await getDoc(docRef);
-                        if (configDoc.exists()) {
-                            const url = configDoc.data().sheetUrl;
-                            setSheetUrl(url);
-                            fetchData(url);
-                        } else {
-                            // Cek localStorage jika Firestore gagal atau baru
-                            const localUrl = localStorage.getItem('skf_url_manual');
-                            if (localUrl) {
-                                setSheetUrl(localUrl);
-                                fetchData(localUrl);
-                            } else {
+                // Cek memori lokal segera
+                const localUrl = localStorage.getItem('skf_url_manual');
+                if (localUrl) {
+                    setSheetUrl(localUrl);
+                    fetchData(localUrl);
+                    if (!user) setDbLoading(false);
+                } else if (!user && typeof __firebase_config === 'undefined') {
+                    // Jika tidak ada di local dan tidak ada Firebase config (GitHub)
+                    setDbLoading(false);
+                    setIsConfigOpen(true);
+                }
+
+                // Jika user Firebase tersedia, sinkronkan dengan Firestore
+                if (user) {
+                    const loadConfigFromDB = async () => {
+                        try {
+                            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'spreadsheet');
+                            const configDoc = await getDoc(docRef);
+                            if (configDoc.exists()) {
+                                const url = configDoc.data().sheetUrl;
+                                setSheetUrl(url);
+                                fetchData(url);
+                            } else if (!localUrl) {
                                 setIsConfigOpen(true);
                             }
+                        } catch (e) {
+                            console.error("Firestore Error:", e);
+                        } finally {
+                            setDbLoading(false);
                         }
-                    } catch (e) {
-                        console.error("Error DB:", e);
-                        const localUrl = localStorage.getItem('skf_url_manual');
-                        if (localUrl) { setSheetUrl(localUrl); fetchData(localUrl); }
-                        else { setIsConfigOpen(true); }
-                    } finally {
-                        setDbLoading(false);
-                    }
-                };
-                loadConfig();
+                    };
+                    loadConfigFromDB();
+                }
             }, [user]);
 
             // Parser CSV
@@ -228,29 +230,31 @@
                     const jsonData = parseToJSON(csvLines);
                     setData(jsonData);
                     setIsConfigOpen(false);
+                    // Simpan ke local memori
                     localStorage.setItem('skf_url_manual', targetUrl);
                 } catch (err) {
-                    setError("Gagal sinkronisasi. Periksa kembali link CSV Google Sheet Anda.");
+                    setError("Gagal sinkronisasi data. Periksa koneksi internet dan link CSV Anda.");
                 } finally {
                     setLoading(false);
                 }
             };
 
             const handleConnect = async () => {
-                if (!user) {
-                    await fetchData(sheetUrl);
-                    return;
-                }
                 setLoading(true);
+                // Simpan ke local dulu untuk kepastian
+                localStorage.setItem('skf_url_manual', sheetUrl);
+                
                 try {
-                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'spreadsheet');
-                    await setDoc(docRef, {
-                        sheetUrl: sheetUrl,
-                        updatedAt: new Date().toISOString()
-                    });
+                    if (user && safeFirebaseConfig.apiKey !== "fallback") {
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'spreadsheet');
+                        await setDoc(docRef, {
+                            sheetUrl: sheetUrl,
+                            updatedAt: new Date().toISOString()
+                        });
+                    }
                     await fetchData(sheetUrl);
                 } catch (e) {
-                    // Jika Firebase gagal (karena config dummy), tetap coba fetch data
+                    // Jika Firebase gagal, tetap lanjut ke fetch data karena sudah ada di localStorage
                     await fetchData(sheetUrl);
                 } finally {
                     setLoading(false);
@@ -314,11 +318,11 @@
                 return 'bg-slate-100 text-slate-500 border-slate-200';
             };
 
-            if (dbLoading && !data.length && user) {
+            if (dbLoading && !data.length) {
                 return (
                     <div className="min-h-screen bg-[#1e3a8a] flex flex-col items-center justify-center text-white p-6">
                         <div className="w-16 h-16 border-4 border-blue-200 border-t-white rounded-full animate-spin mb-4"></div>
-                        <h2 className="text-xl font-black uppercase tracking-widest">Inisialisasi...</h2>
+                        <h2 className="text-xl font-black uppercase tracking-widest">Memuat Sistem...</h2>
                     </div>
                 );
             }
@@ -348,7 +352,7 @@
                                 <h2 className="text-xl font-black mb-4 flex items-center gap-3 text-slate-800 uppercase tracking-tight">
                                     <Icon name="database" className="text-blue-600" /> Setup Spreadsheet Link
                                 </h2>
-                                <p className="text-sm text-slate-500 mb-6">Tautan ini akan digunakan untuk menarik data dari Google Sheets.</p>
+                                <p className="text-sm text-slate-500 mb-6">Link akan disimpan secara otomatis sehingga Anda tidak perlu memasukkannya lagi saat membuka halaman ini.</p>
                                 <div className="flex flex-col md:flex-row gap-4">
                                     <input type="text" placeholder="Masukkan URL CSV Google Sheet..." className="flex-1 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-600" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} />
                                     <button onClick={handleConnect} disabled={loading || !sheetUrl} className="bg-[#1e3a8a] text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl disabled:opacity-50">
