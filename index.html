@@ -42,12 +42,16 @@
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
-        // Import modul Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- PENGAMAN KONFIGURASI ---
+        // ==========================================
+        // TIPS: Jika ingin link tersimpan untuk SEMUA orang selamanya,
+        // Masukkan link CSV Anda di antara tanda petik di bawah ini:
+        const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4knvzFbNvsWJjs88zESzputbexr6c6Yqyl_L8aAH8F9JKW0tA5cjgnzF5UJI7qZLeo6r0x9IoPDBO/pub?output=csv"; 
+        // ==========================================
+
         const safeFirebaseConfig = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config) 
             : { apiKey: "fallback", authDomain: "fallback", projectId: "fallback" };
@@ -61,29 +65,22 @@
 
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // Komponen Ikon (Lucide Standalone) - DIPERBAIKI
-        const Icon = ({ name, size = 20, className = "" }) => {
+        const Icon = ({ name, size = 20, className = "", spin = false }) => {
             const iconRef = useRef(null);
             useEffect(() => {
                 if (window.lucide && iconRef.current) {
-                    // Hanya proses ikon di dalam elemen ini saja (root: iconRef.current)
                     window.lucide.createIcons({
                         root: iconRef.current,
-                        attrs: { 
-                            'stroke-width': 2.5, 
-                            width: size, 
-                            height: size 
-                        },
+                        attrs: { 'stroke-width': 2.5, width: size, height: size },
                         nameAttr: 'data-lucide'
                     });
                 }
-            }, [name, size]); // ClassName dikeluarkan agar tidak memicu pembuatan ulang ikon global
+            }, [name, size]);
             
-            // Animasi diterapkan pada span pembungkus agar tidak merusak pencarian elemen Lucide
             return (
                 <span 
                     ref={iconRef} 
-                    className={`inline-flex items-center justify-center transition-all ${className}`}
+                    className={`inline-flex items-center justify-center ${spin ? 'animate-spin' : ''} ${className}`}
                     style={{ minWidth: size, minHeight: size }}
                 >
                     <i data-lucide={name}></i>
@@ -100,7 +97,6 @@
             const [isCapturing, setIsCapturing] = useState(false);
             const dashboardRef = useRef(null);
 
-            // Filter States
             const [searchUser, setSearchUser] = useState('');
             const [searchProduct, setSearchProduct] = useState('');
             const [searchMachine, setSearchMachine] = useState('');
@@ -108,7 +104,7 @@
             const [monthFilter, setMonthFilter] = useState('Semua');
             const [yearFilter, setYearFilter] = useState('Semua');
             
-            const [sheetUrl, setSheetUrl] = useState(localStorage.getItem('skf_url_manual') || '');
+            const [sheetUrl, setSheetUrl] = useState(DEFAULT_SHEET_URL || localStorage.getItem('skf_url_manual') || '');
             const [isConfigOpen, setIsConfigOpen] = useState(false);
 
             const listMonths = [
@@ -123,14 +119,9 @@
             useEffect(() => {
                 const initAuth = async () => {
                     try {
-                        if (initialToken) {
-                            await signInWithCustomToken(auth, initialToken);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    } catch (e) {
-                        setDbLoading(false);
-                    }
+                        if (initialToken) { await signInWithCustomToken(auth, initialToken); } 
+                        else { await signInAnonymously(auth); }
+                    } catch (e) { setDbLoading(false); }
                 };
                 initAuth();
                 const unsubscribe = onAuthStateChanged(auth, setUser);
@@ -138,36 +129,45 @@
             }, []);
 
             useEffect(() => {
-                const localUrl = localStorage.getItem('skf_url_manual');
-                if (localUrl) {
-                    setSheetUrl(localUrl);
-                    fetchData(localUrl);
-                    if (!user) setDbLoading(false);
-                } else if (!user && typeof __firebase_config === 'undefined') {
-                    setDbLoading(false);
-                    setIsConfigOpen(true);
-                }
+                const loadConfig = async () => {
+                    // Jika ada default hardcoded, langsung pakai
+                    if (DEFAULT_SHEET_URL) {
+                        setSheetUrl(DEFAULT_SHEET_URL);
+                        fetchData(DEFAULT_SHEET_URL);
+                        setDbLoading(false);
+                        return;
+                    }
 
-                if (user) {
-                    const loadConfigFromDB = async () => {
+                    // Cek LocalStorage dulu (paling cepat)
+                    const localUrl = localStorage.getItem('skf_url_manual');
+                    if (localUrl) {
+                        setSheetUrl(localUrl);
+                        fetchData(localUrl);
+                    }
+
+                    // Cek Firestore jika auth tersedia
+                    if (user && safeFirebaseConfig.apiKey !== "fallback") {
                         try {
-                            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'spreadsheet');
+                            // FIXED PATH: 6 segments (artifacts/ID/public/data/settings/config)
+                            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
                             const configDoc = await getDoc(docRef);
                             if (configDoc.exists()) {
                                 const url = configDoc.data().sheetUrl;
                                 setSheetUrl(url);
                                 fetchData(url);
+                                localStorage.setItem('skf_url_manual', url);
                             } else if (!localUrl) {
                                 setIsConfigOpen(true);
                             }
                         } catch (e) {
-                            console.error("Firestore Error:", e);
-                        } finally {
-                            setDbLoading(false);
+                            console.error("Firestore error:", e);
                         }
-                    };
-                    loadConfigFromDB();
-                }
+                    } else if (!localUrl && !DEFAULT_SHEET_URL) {
+                        setIsConfigOpen(true);
+                    }
+                    setDbLoading(false);
+                };
+                loadConfig();
             }, [user]);
 
             const robustCSVParser = (text) => {
@@ -196,7 +196,6 @@
                 if (csvLines.length < 2) return [];
                 const rawHeaders = csvLines[0];
                 const normalizedHeaders = rawHeaders.map(h => h.toLowerCase().replace(/\s/g, '').replace(/[^a-z0-9]/g, ''));
-
                 return csvLines.slice(1).map(row => {
                     const obj = {};
                     const findValue = (keywords, excludeKeywords = []) => {
@@ -206,7 +205,6 @@
                         }
                         return foundIndex !== -1 ? (row[foundIndex] || '') : '';
                     };
-
                     obj.date = findValue(['requestdate', 'tanggal', 'date', 'waktu']);
                     obj.requestedBy = findValue(['requestedby', 'peminta', 'nama', 'user']);
                     obj.rcpId = findValue(['rcpid', 'norcp', 'rcpno'], ['date', 'tanggal']);
@@ -230,12 +228,11 @@
                     if (!response.ok) throw new Error("Link tidak dapat diakses.");
                     const text = await response.text();
                     const csvLines = robustCSVParser(text);
-                    const jsonData = parseToJSON(csvLines);
-                    setData(jsonData);
+                    setData(parseToJSON(csvLines));
                     setIsConfigOpen(false);
                     localStorage.setItem('skf_url_manual', targetUrl);
                 } catch (err) {
-                    setError("Gagal sinkronisasi data. Periksa koneksi internet dan link CSV Anda.");
+                    setError("Gagal sinkronisasi data. Periksa link CSV Google Sheet Anda.");
                 } finally {
                     setLoading(false);
                 }
@@ -246,7 +243,7 @@
                 localStorage.setItem('skf_url_manual', sheetUrl);
                 try {
                     if (user && safeFirebaseConfig.apiKey !== "fallback") {
-                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'spreadsheet');
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
                         await setDoc(docRef, {
                             sheetUrl: sheetUrl,
                             updatedAt: new Date().toISOString()
@@ -321,7 +318,7 @@
                 return (
                     <div className="min-h-screen bg-[#1e3a8a] flex flex-col items-center justify-center text-white p-6">
                         <div className="w-16 h-16 border-4 border-blue-200 border-t-white rounded-full animate-spin mb-4"></div>
-                        <h2 className="text-xl font-black uppercase tracking-widest">Memuat Sistem...</h2>
+                        <h2 className="text-xl font-black uppercase tracking-widest">Inisialisasi Sistem...</h2>
                     </div>
                 );
             }
@@ -339,7 +336,7 @@
                         <div className="flex gap-3">
                             <button onClick={() => setIsConfigOpen(true)} className="p-3 bg-blue-800/50 rounded-xl hover:bg-blue-700 transition-all border border-blue-700/50"><Icon name="settings" size={20} /></button>
                             <button onClick={() => fetchData()} disabled={loading} className="bg-white text-blue-900 px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-105 transition-all shadow-lg active:scale-95 disabled:opacity-50">
-                                <Icon name="refresh-cw" size={18} className={loading ? "animate-spin" : ""} />
+                                <Icon name="refresh-cw" size={18} spin={loading} />
                                 {loading ? 'MEMUAT...' : 'SYNC SHEET'}
                             </button>
                         </div>
@@ -351,7 +348,7 @@
                                 <h2 className="text-xl font-black mb-4 flex items-center gap-3 text-slate-800 uppercase tracking-tight">
                                     <Icon name="database" className="text-blue-600" /> Setup Spreadsheet Link
                                 </h2>
-                                <p className="text-sm text-slate-500 mb-6">Link akan disimpan secara otomatis sehingga Anda tidak perlu memasukkannya lagi saat membuka halaman ini.</p>
+                                <p className="text-sm text-slate-500 mb-6">Link akan disimpan secara otomatis. Untuk pengguna di GitHub, masukkan link sekali lalu klik tombol Simpan.</p>
                                 <div className="flex flex-col md:flex-row gap-4">
                                     <input type="text" placeholder="Masukkan URL CSV Google Sheet..." className="flex-1 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-600" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} />
                                     <button onClick={handleConnect} disabled={loading || !sheetUrl} className="bg-[#1e3a8a] text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl disabled:opacity-50">
@@ -363,7 +360,7 @@
                         )}
 
                         <div ref={dashboardRef} className="space-y-8">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
                                 <StatCard label="DONE" count={rcpStats.DONE} color="emerald" icon="check-circle" />
                                 <StatCard label="APPROVED" count={rcpStats.APPROVED} color="amber" icon="shield-check" />
                                 <StatCard label="CONFIRMED" count={rcpStats.CONFIRMED} color="slate" icon="clock" />
@@ -394,7 +391,7 @@
                                         {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
                                     </select>
                                     <button onClick={handleShare} disabled={isCapturing || !data.length} className="ml-auto bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-black text-[11px] flex items-center gap-3 hover:bg-black transition-all shadow-xl uppercase tracking-widest active:scale-95 disabled:opacity-50">
-                                        <Icon name={isCapturing ? "refresh-cw" : "share-2"} size={18} className={isCapturing ? "animate-spin" : ""} />
+                                        <Icon name="share-2" size={18} spin={isCapturing} />
                                         {isCapturing ? 'PROSES...' : 'SHARE VIEW (PNG)'}
                                     </button>
                                 </div>
@@ -460,7 +457,7 @@
             );
         };
 
-        const StatCard = ({ label, count, color, icon }) => (
+            const StatCard = ({ label, count, color, icon }) => (
             <div className={`bg-white p-6 rounded-[2rem] border border-${color}-100 flex items-center gap-6 shadow-sm group hover:shadow-md transition-all`}>
                 <div className={`bg-${color}-50 p-4 rounded-2xl text-${color}-600 group-hover:scale-110 transition-transform shadow-inner`}>
                     <Icon name={icon} size={32} />
