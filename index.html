@@ -81,6 +81,19 @@
             animation: scan-line 3s linear infinite;
             opacity: 0.3;
         }
+
+        /* Styling Kartu Jabatan */
+        .org-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .org-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+        .org-line {
+            width: 2px;
+            background: repeating-linear-gradient(to bottom, #cbd5e1, #cbd5e1 4px, transparent 4px, transparent 8px);
+        }
     </style>
 </head>
 <body class="bg-industrial text-slate-900">
@@ -132,7 +145,7 @@
                 "Connecting to Secure Database...",
                 "Scanning Engineering Protocols...",
                 "Fetching Inventory Logs...",
-                "Optimizing Technical Modules...",
+                "Loading Organization Structure...",
                 "Booting SKF Central Information System..."
             ];
 
@@ -151,7 +164,6 @@
                 <div className="fixed inset-0 loading-screen flex flex-col items-center justify-center text-white overflow-hidden">
                     <div className="scan-overlay"></div>
                     
-                    {/* Gear Animation Center */}
                     <div className="relative mb-12 scale-125 md:scale-150">
                         <Icon name="settings" size={120} className="text-blue-400 gear-spin-slow opacity-20" />
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -163,7 +175,7 @@
                     </div>
 
                     <div className="text-center z-10 space-y-4">
-                        <h2 className="text-2xl font-black uppercase tracking-[0.4em] mb-2 drop-shadow-lg">DEPT. TEKNIK SKF</h2>
+                        <h2 className="text-2xl font-black uppercase tracking-[0.4em] mb-2 drop-shadow-lg text-white">DEPT. TEKNIK SKF</h2>
                         <div className="flex flex-col items-center gap-2">
                             <div className="w-48 h-1 bg-blue-900 rounded-full overflow-hidden">
                                 <div className="h-full bg-blue-400 w-1/2 animate-[progress_2s_infinite]"></div>
@@ -186,7 +198,7 @@
 
         const App = () => {
             const [isBooting, setIsBooting] = useState(true);
-            const [currentPage, setCurrentPage] = useState('dashboard');
+            const [currentPage, setCurrentPage] = useState('dashboard'); // dashboard, history, structure
             const [data, setData] = useState([]);
             const [loading, setLoading] = useState(false);
             const [dbLoading, setDbLoading] = useState(true);
@@ -195,7 +207,6 @@
             const [isCapturing, setIsCapturing] = useState(false);
             const dashboardRef = useRef(null);
 
-            // Filter States
             const [searchUser, setSearchUser] = useState('');
             const [searchProduct, setSearchProduct] = useState('');
             const [searchMachine, setSearchMachine] = useState('');
@@ -203,7 +214,7 @@
             const [monthFilter, setMonthFilter] = useState('Semua');
             const [yearFilter, setYearFilter] = useState('Semua');
             
-            const [sheetUrl, setSheetUrl] = useState(DEFAULT_SHEET_URL || localStorage.getItem('skf_url_manual') || '');
+            const [sheetUrl, setSheetUrl] = useState(localStorage.getItem('skf_url_manual') || DEFAULT_SHEET_URL);
             const [isConfigOpen, setIsConfigOpen] = useState(false);
 
             const listMonths = [
@@ -221,12 +232,12 @@
                         const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
                         if (token) { await signInWithCustomToken(auth, token); } 
                         else { await signInAnonymously(auth); }
-                    } catch (e) { setDbLoading(false); }
+                    } catch (e) { 
+                        setDbLoading(false); 
+                    }
                 };
                 initAuth();
                 const unsubscribe = onAuthStateChanged(auth, setUser);
-                
-                // Animasi Booting Minimal 3 Detik
                 const timer = setTimeout(() => setIsBooting(false), 3200);
                 
                 return () => {
@@ -236,29 +247,20 @@
             }, []);
 
             useEffect(() => {
-                if (!user) return;
                 const loadConfig = async () => {
-                    try {
-                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'settings');
-                        const configDoc = await getDoc(docRef);
-                        if (configDoc.exists()) {
-                            const url = configDoc.data().sheetUrl;
-                            setSheetUrl(url);
-                            fetchData(url);
-                        } else {
-                            const localUrl = localStorage.getItem('skf_url_manual');
-                            if (localUrl) {
-                                setSheetUrl(localUrl);
-                                fetchData(localUrl);
-                            } else if (DEFAULT_SHEET_URL) {
-                                setSheetUrl(DEFAULT_SHEET_URL);
-                                fetchData(DEFAULT_SHEET_URL);
-                            } else {
-                                setIsConfigOpen(true);
+                    fetchData(sheetUrl);
+                    if (user && firebaseConfig.apiKey !== "dummy-key") {
+                        try {
+                            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'settings');
+                            const configDoc = await getDoc(docRef);
+                            if (configDoc.exists()) {
+                                const url = configDoc.data().sheetUrl;
+                                setSheetUrl(url);
+                                fetchData(url);
                             }
-                        }
-                    } catch (e) { console.error(e); } 
-                    finally { setDbLoading(false); }
+                        } catch (e) { console.error(e); }
+                    }
+                    setDbLoading(false);
                 };
                 loadConfig();
             }, [user]);
@@ -332,11 +334,12 @@
             };
 
             const handleConnect = async () => {
-                if (!user) return;
                 setLoading(true);
                 try {
-                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'settings');
-                    await setDoc(docRef, { sheetUrl: sheetUrl, updatedAt: new Date().toISOString() });
+                    if (user && firebaseConfig.apiKey !== "dummy-key") {
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'settings');
+                        await setDoc(docRef, { sheetUrl: sheetUrl, updatedAt: new Date().toISOString() });
+                    }
                     await fetchData(sheetUrl);
                 } catch (e) { await fetchData(sheetUrl); } 
                 finally { setLoading(false); }
@@ -399,12 +402,10 @@
                 return 'bg-slate-100 text-slate-500 border-slate-200';
             };
 
-            // Loading Screen Utama
             if (isBooting) {
                 return <LoadingScreen />;
             }
 
-            // Halaman Dashboard Utama
             if (currentPage === 'dashboard') {
                 return (
                     <div className="min-h-screen flex flex-col fade-in">
@@ -419,7 +420,7 @@
                                         <Icon name="wrench" size={48} className="text-[#1e3a8a]" />
                                     </div>
                                     <div>
-                                        <h1 className="font-black text-3xl md:text-5xl uppercase tracking-tighter leading-none italic">SISTEM INFORMASI</h1>
+                                        <h1 className="font-black text-3xl md:text-5xl uppercase tracking-tighter leading-none italic text-white drop-shadow-md">SISTEM INFORMASI</h1>
                                         <p className="text-blue-200 text-lg md:text-xl font-bold uppercase tracking-[0.2em] mt-2 border-l-4 border-white pl-4">DEPARTEMEN TEKNIK SKF</p>
                                     </div>
                                 </div>
@@ -437,20 +438,26 @@
                                 onClick={() => setCurrentPage('history')}
                                 className="group relative bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-200 hover:shadow-2xl hover:border-blue-300 transition-all duration-500 flex flex-col items-start overflow-hidden text-left"
                             >
-                                <div className="bg-blue-600 text-white p-5 rounded-2xl mb-6 shadow-lg shadow-blue-100 group-hover:scale-110 transition-transform">
-                                    <Icon name="history" size={32} />
-                                </div>
+                                <div className="absolute -right-6 -top-6 opacity-[0.05] group-hover:opacity-10 transition-opacity"><Icon name="clipboard-list" size={150} /></div>
+                                <div className="bg-blue-600 text-white p-5 rounded-2xl mb-6 shadow-lg shadow-blue-100 group-hover:scale-110 transition-transform"><Icon name="history" size={32} /></div>
                                 <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">Riwayat Permintaan</h2>
                                 <p className="text-slate-500 font-medium leading-relaxed mb-8">Pemantauan riwayat pemesanan sparepart dan status RCP ID secara real-time.</p>
-                                <div className="mt-auto flex items-center gap-2 font-black text-blue-600 uppercase text-xs tracking-widest group-hover:gap-4 transition-all">
-                                    MASUK KE HALAMAN <Icon name="arrow-right" size={16} />
-                                </div>
+                                <div className="mt-auto flex items-center gap-2 font-black text-blue-600 uppercase text-xs tracking-widest group-hover:gap-4 transition-all">MASUK KE HALAMAN <Icon name="arrow-right" size={16} /></div>
+                            </button>
+
+                            <button 
+                                onClick={() => setCurrentPage('structure')}
+                                className="group relative bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-200 hover:shadow-2xl hover:border-blue-300 transition-all duration-500 flex flex-col items-start overflow-hidden text-left"
+                            >
+                                <div className="absolute -right-6 -top-6 opacity-[0.05] group-hover:opacity-10 transition-opacity"><Icon name="users" size={150} /></div>
+                                <div className="bg-indigo-600 text-white p-5 rounded-2xl mb-6 shadow-lg shadow-indigo-100 group-hover:scale-110 transition-transform"><Icon name="sitemap" size={32} /></div>
+                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">Struktur Jabatan</h2>
+                                <p className="text-slate-500 font-medium leading-relaxed mb-8">Informasi hierarki organisasi dan tanggung jawab personil di Departemen Teknik SKF.</p>
+                                <div className="mt-auto flex items-center gap-2 font-black text-indigo-600 uppercase text-xs tracking-widest group-hover:gap-4 transition-all">LIHAT STRUKTUR <Icon name="arrow-right" size={16} /></div>
                             </button>
 
                             <div className="group relative bg-white/60 p-8 rounded-[2.5rem] shadow-md border border-slate-100 opacity-70 flex flex-col items-start grayscale">
-                                <div className="bg-slate-200 text-slate-500 p-5 rounded-2xl mb-6">
-                                    <Icon name="calendar-clock" size={32} />
-                                </div>
+                                <div className="bg-slate-200 text-slate-500 p-5 rounded-2xl mb-6"><Icon name="calendar-clock" size={32} /></div>
                                 <h2 className="text-2xl font-black text-slate-400 uppercase tracking-tight mb-2 italic">Maintenance Schedule</h2>
                                 <p className="text-slate-400 font-medium leading-relaxed italic">Segera Hadir.</p>
                             </div>
@@ -458,9 +465,7 @@
 
                         <footer className="p-10 border-t border-slate-200 flex justify-between items-center text-slate-400">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-[#1e3a8a] text-white rounded-xl flex items-center justify-center shadow-sm">
-                                    <Icon name="wrench" size={20} />
-                                </div>
+                                <div className="w-10 h-10 bg-[#1e3a8a] text-white rounded-xl flex items-center justify-center shadow-sm"><Icon name="wrench" size={20} /></div>
                                 <p className="text-[10px] font-black uppercase tracking-widest">SKF Industrial Solution</p>
                             </div>
                             <p className="text-[10px] font-black uppercase">&copy; 2026 INTERNAL SKF USE ONLY</p>
@@ -469,6 +474,75 @@
                 );
             }
 
+            if (currentPage === 'structure') {
+                return (
+                    <div className="min-h-screen flex flex-col fade-in">
+                        <header className="bg-[#1e3a8a] text-white p-6 sticky top-0 z-20 shadow-xl flex justify-between items-center border-b border-blue-800">
+                            <div className="flex items-center gap-4">
+                                <button onClick={() => setCurrentPage('dashboard')} className="bg-white/10 p-2 rounded-lg hover:bg-white hover:text-blue-900 transition-all flex items-center gap-2 font-bold text-xs uppercase tracking-widest">
+                                    <Icon name="chevron-left" /> KEMBALI
+                                </button>
+                                <div className="h-8 w-[1px] bg-white/20 mx-2"></div>
+                                <h1 className="font-extrabold text-lg uppercase tracking-tight leading-none">Struktur Jabatan</h1>
+                            </div>
+                        </header>
+
+                        <main className="max-w-[1400px] mx-auto p-10 flex-1 w-full space-y-12">
+                            <div className="text-center mb-12">
+                                <h2 className="text-4xl font-black text-slate-800 uppercase tracking-tighter italic">STRUKTUR JABATAN TEKNIK SKF</h2>
+                                <div className="w-24 h-1.5 bg-blue-600 mx-auto mt-4 rounded-full"></div>
+                            </div>
+
+                            {/* Organizational Chart Mockup based on Engineering Standards */}
+                            <div className="flex flex-col items-center gap-8">
+                                {/* Level 1: Head */}
+                                <OrgNode name="Engineering Manager" role="Kepala Departemen" color="bg-[#1e3a8a]" isHead />
+                                
+                                <div className="org-line h-12"></div>
+
+                                {/* Level 2: Supervisors */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full max-w-4xl relative">
+                                    {/* Link Lines for desktop */}
+                                    <div className="hidden md:block absolute top-[-24px] left-1/4 right-1/4 h-[2px] bg-slate-200"></div>
+                                    
+                                    <div className="flex flex-col items-center">
+                                        <OrgNode name="Supervisor Maintenance" role="Pemeliharaan Mesin" color="bg-indigo-600" />
+                                        <div className="org-line h-8"></div>
+                                        <div className="grid grid-cols-2 gap-4 w-full">
+                                            <OrgNode name="Tech. Mechanical" role="Staff" color="bg-slate-700" isSmall />
+                                            <OrgNode name="Tech. Electrical" role="Staff" color="bg-slate-700" isSmall />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col items-center">
+                                        <OrgNode name="Supervisor Project" role="Pengembangan & Aset" color="bg-blue-600" />
+                                        <div className="org-line h-8"></div>
+                                        <div className="grid grid-cols-2 gap-4 w-full">
+                                            <OrgNode name="Admin Teknik" role="Logistik & Data" color="bg-slate-700" isSmall />
+                                            <OrgNode name="Project Staff" role="Staff" color="bg-slate-700" isSmall />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-20 p-8 bg-blue-50 rounded-[2rem] border border-blue-100 flex flex-col items-center text-center">
+                                <Icon name="info" size={32} className="text-blue-600 mb-4" />
+                                <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm mb-2">Informasi Tambahan</h3>
+                                <p className="text-slate-500 max-w-2xl text-sm leading-relaxed">
+                                    Struktur ini disusun untuk memastikan efisiensi alur kerja Departemen Teknik CV Surya Kencana Food. 
+                                    Setiap personil bertanggung jawab langsung kepada atasan masing-masing sesuai bagan di atas.
+                                </p>
+                            </div>
+                        </main>
+
+                        <footer className="p-10 border-t border-slate-200 flex justify-center text-slate-400">
+                            <p className="text-[10px] font-black uppercase tracking-widest italic">Dokumen Resmi Departemen Teknik SKF - 2026</p>
+                        </footer>
+                    </div>
+                );
+            }
+
+            // Halaman Riwayat Permintaan Barang
             return (
                 <div className="min-h-screen pb-20 fade-in">
                     <header className="bg-[#1e3a8a] text-white p-6 sticky top-0 z-20 shadow-xl flex justify-between items-center border-b border-blue-800">
@@ -491,9 +565,7 @@
                     <main className="max-w-[1500px] mx-auto p-6 space-y-8">
                         {isConfigOpen && (
                             <div className="bg-white p-8 rounded-[2.5rem] border-2 border-blue-100 shadow-2xl animate-in">
-                                <h2 className="text-xl font-black mb-4 flex items-center gap-3 text-slate-800 uppercase tracking-tight">
-                                    <Icon name="database" className="text-blue-600" /> Database Connection
-                                </h2>
+                                <h2 className="text-xl font-black mb-4 flex items-center gap-3 text-slate-800 uppercase tracking-tight"><Icon name="database" className="text-blue-600" /> Database Connection</h2>
                                 <div className="flex flex-col md:flex-row gap-4">
                                     <input type="text" placeholder="URL CSV Google Sheet..." className="flex-1 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-600" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} />
                                     <button onClick={handleConnect} disabled={loading || !sheetUrl} className="bg-[#1e3a8a] text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl">Simpan Link</button>
@@ -517,21 +589,9 @@
                                 </div>
 
                                 <div className="flex flex-wrap gap-4 items-center pt-2">
-                                    <select className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] w-full md:w-56 uppercase tracking-wider text-slate-600 cursor-pointer" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                                        <option value="Semua">STATUS: SEMUA</option>
-                                        <option value="DONE">DONE</option>
-                                        <option value="APPROVED">APPROVED</option>
-                                        <option value="CONFIRMED">CONFIRMED</option>
-                                        <option value="CANCELED">CANCELED</option>
-                                    </select>
-                                    <select className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] w-full md:w-56 uppercase tracking-wider text-slate-600 cursor-pointer" value={monthFilter} onChange={e => setMonthFilter(e.target.value)}>
-                                        <option value="Semua">BULAN: SEMUA</option>
-                                        {listMonths.map(m => <option key={m.val} value={m.val}>{m.name.toUpperCase()}</option>)}
-                                    </select>
-                                    <select className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] w-full md:w-40 uppercase tracking-wider text-slate-600 cursor-pointer" value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
-                                        <option value="Semua">TAHUN: SEMUA</option>
-                                        {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-                                    </select>
+                                    <select className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] w-full md:w-56 uppercase tracking-wider text-slate-600 cursor-pointer" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="Semua">STATUS: SEMUA</option><option value="DONE">DONE</option><option value="APPROVED">APPROVED</option><option value="CONFIRMED">CONFIRMED</option><option value="CANCELED">CANCELED</option></select>
+                                    <select className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] w-full md:w-56 uppercase tracking-wider text-slate-600 cursor-pointer" value={monthFilter} onChange={e => setMonthFilter(e.target.value)}><option value="Semua">BULAN: SEMUA</option>{listMonths.map(m => <option key={m.val} value={m.val}>{m.name.toUpperCase()}</option>)}</select>
+                                    <select className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] w-full md:w-40 uppercase tracking-wider text-slate-600 cursor-pointer" value={yearFilter} onChange={e => setYearFilter(e.target.value)}><option value="Semua">TAHUN: SEMUA</option>{availableYears.map(y => <option key={y} value={y}>{y}</option>)}</select>
                                     <button onClick={handleShare} disabled={isCapturing || !data.length} className="ml-auto bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-black text-[11px] flex items-center gap-3 hover:bg-black transition-all shadow-xl uppercase tracking-widest active:scale-95 disabled:opacity-50">
                                         <Icon name="share-2" size={18} spin={isCapturing} />
                                         {isCapturing ? 'PROSES...' : 'SHARE VIEW (PNG)'}
@@ -552,9 +612,7 @@
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
-                                            {filteredData.length === 0 ? (
-                                                <tr><td colSpan="7" className="p-20 text-center text-slate-300 font-bold uppercase tracking-widest">Data Tidak Ditemukan</td></tr>
-                                            ) : (
+                                            {filteredData.length === 0 ? (<tr><td colSpan="7" className="p-20 text-center text-slate-300 font-bold uppercase tracking-widest">Data Tidak Ditemukan</td></tr>) : (
                                                 filteredData.map((item, i) => (
                                                     <tr key={i} className="hover:bg-blue-50/50 transition-all">
                                                         <td className="px-6 py-5 whitespace-nowrap text-[11px] font-bold text-slate-400">{item.date || '-'}</td>
@@ -576,6 +634,16 @@
                 </div>
             );
         };
+
+        const OrgNode = ({ name, role, color, isHead = false, isSmall = false }) => (
+            <div className={`org-card ${color} text-white rounded-2xl shadow-lg flex flex-col items-center ${isHead ? 'p-8 min-w-[300px]' : isSmall ? 'p-4 min-w-[150px]' : 'p-6 min-w-[250px]'}`}>
+                <div className={`bg-white/20 rounded-full flex items-center justify-center mb-3 ${isSmall ? 'w-10 h-10' : 'w-14 h-14'}`}>
+                    <Icon name={isHead ? "award" : "user"} size={isSmall ? 20 : 28} />
+                </div>
+                <h3 className={`${isSmall ? 'text-xs' : 'text-lg'} font-black uppercase tracking-tight text-center leading-tight`}>{name}</h3>
+                <p className={`${isSmall ? 'text-[8px]' : 'text-[10px]'} font-bold uppercase opacity-70 tracking-widest mt-1 text-center`}>{role}</p>
+            </div>
+        );
 
         const StatCard = ({ label, count, color, icon }) => (
             <div className={`bg-white p-6 rounded-[2rem] border border-${color}-100 flex items-center gap-6 shadow-sm group hover:shadow-md transition-all`}>
