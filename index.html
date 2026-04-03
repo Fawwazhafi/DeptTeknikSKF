@@ -162,18 +162,34 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // DATABASE CONFIG
-        const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4knvzFbNvsWJjs88zESzputbexr6c6Yqyl_L8aAH8F9JKW0tA5cjgnzF5UJI7qZLeo6r0x9IoPDBO/pub?output=csv"; 
+        // --- PENGAMAN KONFIGURASI UNTUK GITHUB PAGES ---
+        let firebaseConfig = {
+            apiKey: "dummy-key",
+            authDomain: "dummy.firebaseapp.com",
+            projectId: "dummy-project",
+            storageBucket: "dummy.appspot.com",
+            messagingSenderId: "000",
+            appId: "0:000:web:000"
+        };
 
-        const firebaseConfig = JSON.parse(__firebase_config);
+        try {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                firebaseConfig = JSON.parse(__firebase_config);
+            }
+        } catch (e) {
+            console.warn("Konfigurasi Firebase lokal digunakan.");
+        }
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'skf-engineering-prod';
+
+        const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4knvzFbNvsWJjs88zESzputbexr6c6Yqyl_L8aAH8F9JKW0tA5cjgnzF5UJI7qZLeo6r0x9IoPDBO/pub?output=csv"; 
 
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // Ikon Fix: Menggunakan inisialisasi yang lebih agresif
         const Icon = ({ name, size = 20, className = "", spin = false }) => {
             const iconRef = useRef(null);
             
@@ -189,7 +205,6 @@
 
             useEffect(() => {
                 renderIcon();
-                // Jalankan lagi setelah delay kecil untuk memastikan DOM stabil
                 const t = setTimeout(renderIcon, 50);
                 return () => clearTimeout(t);
             }, [name, size, className]);
@@ -219,14 +234,13 @@
                     </div>
                     <div className="text-center z-10">
                         <h2 className="text-2xl font-black uppercase tracking-[0.4em] mb-4 drop-shadow-lg text-white">DEPT. TEKNIK SKF</h2>
-                        <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest pulse-text">{status}</p>
+                        <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest h-4">{status}</p>
                     </div>
                 </div>
             );
         };
 
         const App = () => {
-            // --- State Declarations ---
             const [isBooting, setIsBooting] = useState(true);
             const [currentPage, setCurrentPage] = useState('dashboard');
             const [openAccordion, setOpenAccordion] = useState(null);
@@ -249,12 +263,10 @@
 
             const dashboardRef = useRef(null);
 
-            // --- Derived Variables ---
             const searchUserLower = searchUser.toLowerCase();
             const searchProductLower = searchProduct.toLowerCase();
             const searchMachineLower = searchMachine.toLowerCase();
 
-            // Struktur Data Lengkap
             const orgData = [
                 { id: "adm", title: "Administration", icon: "clipboard-check", columns: [{ title: "KEY LEADERS", members: [{n: "Deni Kristanto", r: "GENERAL SPV PROSES"}, {n: "Agung Budi S", r: "GENERAL SPV PACKAGING"}] }, { title: "ADMINISTRATION", members: [{n: "Ari Anjasmara", r: "ADMIN DOWNTIME PROSES"}, {n: "Fawwaz Hafiyulloh", r: "ADMIN PENGADAAN SPAREPART"}] }] },
                 { id: "ele", title: "Electrical Engineer", icon: "zap", columns: [{ title: "KEY LEADERS", members: [{n: "Erik Rian Arifin", r: "PIC ELECTRIC"}, {n: "Deni Kristanto", r: "GENERAL SPV PROSES"}] }, { title: "ELECTRICAL TEAM", members: [{n: "Mohammad Rohmatulloh Ramadhan", r: "ELECTRICAL PLC"}, {n: "Muhammad Afrizal", r: "GENERAL ELECTRICAL"}, {n: "Desta Wahyu Riski", r: "GENERAL ELECTRICAL"}] }] },
@@ -267,7 +279,6 @@
                 { id: "wsh", title: "Workshop", icon: "hammer", columns: [{ title: "KEY LEADERS", members: [{n: "Jamil", r: "PIC WORKSHOP"}, {n: "Deni Kristanto", r: "GENERAL SPV PROSES"}] }, { title: "WORKSHOP TEAM", members: [{n: "Agung setiawan", r: "WORKSHOP"}, {n: "Rizky Nur S", r: "WORKSHOP"}] }] }
             ];
 
-            // --- Manual Book List ---
             const manualBooks = [
                 { name: "Inverter Danfoss (English)", file: "INVERTER DANFOSS (ENGLISH).pdf" },
                 { name: "Inverter Danfoss (Indo)", file: "INVERTER DANFOSS (INDO).pdf" },
@@ -281,16 +292,10 @@
                 { name: "Manual Book Wafer Stick 4 Line", file: "MANUAL BOOK WAFER STICK 4 LINE.pdf" }
             ];
 
-            // --- FIXED PDF OPENER ---
             const openPDF = (filename) => {
-                // Mendapatkan path dasar dari URL saat ini (misal: fawwazhafi.github.io/DeptTeknikSKF/)
                 const currentPath = window.location.href.split('?')[0].split('#')[0];
                 const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
-                
-                // Membangun URL absolut untuk file PDF
                 const pdfUrl = basePath + encodeURIComponent(filename);
-                
-                // Membuka file di tab baru
                 window.open(pdfUrl, '_blank', 'noopener,noreferrer');
             };
 
@@ -303,23 +308,24 @@
                 };
                 initAuth();
                 const unsubscribe = onAuthStateChanged(auth, setUser);
-                setTimeout(() => setIsBooting(false), 3200);
-                return () => unsubscribe();
+                const timer = setTimeout(() => setIsBooting(false), 3200);
+                return () => { unsubscribe(); clearTimeout(timer); };
             }, []);
 
             useEffect(() => {
-                if (!user) return;
                 const loadAllData = async () => {
                     fetchData(sheetUrl);
-                    try {
-                        const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'settings');
-                        const configDoc = await getDoc(configRef);
-                        if (configDoc.exists()) {
-                            setSheetUrl(configDoc.data().sheetUrl);
-                            fetchData(configDoc.data().sheetUrl);
-                        }
-                    } catch (e) { console.error(e); } 
-                    finally { setDbLoading(false); }
+                    if (user && firebaseConfig.apiKey !== "dummy-key") {
+                        try {
+                            const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'settings');
+                            const configDoc = await getDoc(configRef);
+                            if (configDoc.exists()) {
+                                setSheetUrl(configDoc.data().sheetUrl);
+                                fetchData(configDoc.data().sheetUrl);
+                            }
+                        } catch (e) { console.error(e); } 
+                    }
+                    setDbLoading(false);
                 };
                 loadAllData();
             }, [user]);
@@ -361,7 +367,9 @@
             const handleConnect = async () => {
                 setLoading(true);
                 try {
-                    if (user) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'settings'), { sheetUrl, updatedAt: new Date().toISOString() });
+                    if (user && firebaseConfig.apiKey !== "dummy-key") {
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'settings'), { sheetUrl, updatedAt: new Date().toISOString() });
+                    }
                     await fetchData(sheetUrl);
                 } catch (e) { await fetchData(sheetUrl); } finally { setLoading(false); }
             };
@@ -570,6 +578,17 @@
                     </header>
 
                     <main className="max-w-[1500px] mx-auto p-6 space-y-8">
+                        {isConfigOpen && (
+                            <div className="bg-white p-8 rounded-[2.5rem] border-2 border-blue-100 shadow-2xl animate-in">
+                                <h2 className="text-xl font-black mb-4 flex items-center gap-3 text-slate-800 uppercase tracking-tight"><Icon name="database" className="text-blue-600" /> Database Connection</h2>
+                                <div className="flex flex-col md:flex-row gap-4">
+                                    <input type="text" placeholder="URL CSV Google Sheet..." className="flex-1 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} />
+                                    <button onClick={handleConnect} disabled={loading || !sheetUrl} className="bg-[#1e3a8a] text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center justify-center gap-2">
+                                        <Icon name="save" size={16} /> Simpan Link
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
                             <StatCard label="DONE" count={rcpStats.DONE} color="emerald" icon="check-circle" />
                             <StatCard label="APPROVED" count={rcpStats.APPROVED} color="amber" icon="shield-check" />
@@ -577,7 +596,7 @@
                             <StatCard label="CANCELED" count={rcpStats.CANCELED} color="red" icon="x-circle" />
                         </div>
                         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <SearchInput icon="user" placeholder="Requested By..." value={searchUser} onChange={setSearchUser} />
                                 <SearchInput icon="package-search" placeholder="Product / Sparepart..." value={searchProduct} onChange={setSearchProduct} />
                                 <SearchInput icon="cpu" placeholder="Machine Line..." value={searchMachine} onChange={setSearchMachine} />
@@ -590,17 +609,21 @@
                                 <table className="w-full text-left">
                                     <thead className="bg-slate-50 border-b"><tr><th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase">Date</th><th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase">Requested By</th><th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase">RCP ID</th><th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase text-center">Status</th><th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase">Product</th><th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase text-center">Qty</th><th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase">Machine</th></tr></thead>
                                     <tbody className="divide-y divide-slate-50">
-                                        {filteredData.map((item, i) => (
-                                            <tr key={i} className="hover:bg-blue-50/50 transition-all">
-                                                <td className="px-6 py-5 whitespace-nowrap text-[10px] font-bold text-slate-400">{item.date}</td>
-                                                <td className="px-6 py-5 whitespace-nowrap text-xs font-black text-slate-700 uppercase">{item.requestedBy}</td>
-                                                <td className="px-6 py-5 whitespace-nowrap"><span className="text-[10px] font-black text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border">{item.rcpId}</span></td>
-                                                <td className="px-6 py-5 whitespace-nowrap text-center"><span className={`inline-block min-w-[90px] px-3 py-2 rounded-xl text-[9px] font-black uppercase border ${getStatusStyle(item.status)}`}>{item.status}</span></td>
-                                                <td className="px-6 py-5 text-sm font-black text-slate-900 uppercase leading-tight">{item.product}</td>
-                                                <td className="px-6 py-5 whitespace-nowrap text-xs font-black text-center text-[#1e3a8a]">{item.qty} {item.unit}</td>
-                                                <td className="px-6 py-5 whitespace-nowrap text-[10px] font-black text-slate-500 italic opacity-80">{item.machine}</td>
-                                            </tr>
-                                        ))}
+                                        {filteredData.length === 0 ? (
+                                            <tr><td colSpan="7" className="p-20 text-center opacity-30 uppercase font-black tracking-widest">Data Tidak Ditemukan</td></tr>
+                                        ) : (
+                                            filteredData.map((item, i) => (
+                                                <tr key={i} className="hover:bg-blue-50/50 transition-all">
+                                                    <td className="px-6 py-5 whitespace-nowrap text-[10px] font-bold text-slate-400">{item.date}</td>
+                                                    <td className="px-6 py-5 whitespace-nowrap text-xs font-black text-slate-700 uppercase">{item.requestedBy}</td>
+                                                    <td className="px-6 py-5 whitespace-nowrap"><span className="text-[10px] font-black text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border">{item.rcpId}</span></td>
+                                                    <td className="px-6 py-5 whitespace-nowrap text-center"><span className={`inline-block min-w-[90px] px-3 py-2 rounded-xl text-[9px] font-black uppercase border shadow-sm ${getStatusStyle(item.status)}`}>{item.status}</span></td>
+                                                    <td className="px-6 py-5 text-sm font-black text-slate-900 uppercase leading-tight">{item.product}</td>
+                                                    <td className="px-6 py-5 whitespace-nowrap text-xs font-black text-center text-[#1e3a8a]">{item.qty} {item.unit}</td>
+                                                    <td className="px-6 py-5 whitespace-nowrap text-[10px] font-black text-slate-500 italic opacity-80">{item.machine}</td>
+                                                </tr>
+                                            ))
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
