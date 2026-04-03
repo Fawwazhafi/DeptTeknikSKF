@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dept. Teknik SKF - Monitoring</title>
+    <title>Sistem Informasi Dept. Teknik SKF</title>
     
     <!-- Pustaka Dasar -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,7 +17,8 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.01em; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.01em; overflow-x: hidden; }
+        
         select {
             appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
@@ -25,20 +26,64 @@
             background-position: right 1rem center;
             background-size: 1.2em;
         }
+
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         
-        .animate-in {
-            animation: fadeIn 0.4s ease-out;
+        /* Animasi Roda Gigi */
+        @keyframes gear-rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes gear-rotate-reverse {
+            from { transform: rotate(360deg); }
+            to { transform: rotate(0deg); }
+        }
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.98); }
+        }
+        @keyframes scan-line {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+
+        .gear-spin { animation: gear-rotate 8s linear infinite; }
+        .gear-spin-slow { animation: gear-rotate 15s linear infinite; }
+        .gear-spin-reverse { animation: gear-rotate-reverse 10s linear infinite; }
+        .pulse-text { animation: pulse-soft 2s ease-in-out infinite; }
+        
+        .fade-in {
+            animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(15px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .bg-industrial {
+            background-color: #f8fafc;
+            background-image: radial-gradient(#e2e8f0 1.5px, transparent 1.5px);
+            background-size: 30px 30px;
+        }
+
+        .loading-screen {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+            z-index: 9999;
+        }
+
+        .scan-overlay {
+            height: 2px;
+            background: linear-gradient(to right, transparent, #60a5fa, transparent);
+            position: absolute;
+            width: 100%;
+            animation: scan-line 3s linear infinite;
+            opacity: 0.3;
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body class="bg-industrial text-slate-900">
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
@@ -46,32 +91,25 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ==========================================
-        // TIPS: Jika ingin link tersimpan untuk SEMUA orang selamanya,
-        // Masukkan link CSV Anda di antara tanda petik di bawah ini:
+        // DATABASE CONFIG
         const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4knvzFbNvsWJjs88zESzputbexr6c6Yqyl_L8aAH8F9JKW0tA5cjgnzF5UJI7qZLeo6r0x9IoPDBO/pub?output=csv"; 
-        // ==========================================
 
-        const safeFirebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : { apiKey: "fallback", authDomain: "fallback", projectId: "fallback" };
-        
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'skf-engineering-prod';
-        const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        const app = initializeApp(safeFirebaseConfig);
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'skf-engineering-prod';
 
         const { useState, useEffect, useMemo, useRef } = React;
 
+        // Komponen Ikon (Lucide)
         const Icon = ({ name, size = 20, className = "", spin = false }) => {
             const iconRef = useRef(null);
             useEffect(() => {
                 if (window.lucide && iconRef.current) {
                     window.lucide.createIcons({
                         root: iconRef.current,
-                        attrs: { 'stroke-width': 2.5, width: size, height: size },
+                        attrs: { 'stroke-width': 2.2, width: size, height: size },
                         nameAttr: 'data-lucide'
                     });
                 }
@@ -88,7 +126,67 @@
             );
         };
 
+        const LoadingScreen = () => {
+            const [status, setStatus] = useState("Initializing Core Modules...");
+            const statuses = [
+                "Connecting to Secure Database...",
+                "Scanning Engineering Protocols...",
+                "Fetching Inventory Logs...",
+                "Optimizing Technical Modules...",
+                "Booting SKF Central Information System..."
+            ];
+
+            useEffect(() => {
+                let i = 0;
+                const interval = setInterval(() => {
+                    if (i < statuses.length) {
+                        setStatus(statuses[i]);
+                        i++;
+                    }
+                }, 600);
+                return () => clearInterval(interval);
+            }, []);
+
+            return (
+                <div className="fixed inset-0 loading-screen flex flex-col items-center justify-center text-white overflow-hidden">
+                    <div className="scan-overlay"></div>
+                    
+                    {/* Gear Animation Center */}
+                    <div className="relative mb-12 scale-125 md:scale-150">
+                        <Icon name="settings" size={120} className="text-blue-400 gear-spin-slow opacity-20" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <Icon name="settings" size={60} className="text-white gear-spin-reverse" />
+                        </div>
+                        <div className="absolute top-[-30px] right-[-30px]">
+                            <Icon name="settings" size={40} className="text-blue-300 gear-spin" />
+                        </div>
+                    </div>
+
+                    <div className="text-center z-10 space-y-4">
+                        <h2 className="text-2xl font-black uppercase tracking-[0.4em] mb-2 drop-shadow-lg">DEPT. TEKNIK SKF</h2>
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="w-48 h-1 bg-blue-900 rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-400 w-1/2 animate-[progress_2s_infinite]"></div>
+                            </div>
+                            <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest pulse-text h-4">
+                                {status}
+                            </p>
+                        </div>
+                    </div>
+
+                    <style>{`
+                        @keyframes progress {
+                            0% { transform: translateX(-100%); }
+                            100% { transform: translateX(200%); }
+                        }
+                    `}</style>
+                </div>
+            );
+        };
+
         const App = () => {
+            const [isBooting, setIsBooting] = useState(true);
+            const [currentPage, setCurrentPage] = useState('dashboard');
             const [data, setData] = useState([]);
             const [loading, setLoading] = useState(false);
             const [dbLoading, setDbLoading] = useState(true);
@@ -97,6 +195,7 @@
             const [isCapturing, setIsCapturing] = useState(false);
             const dashboardRef = useRef(null);
 
+            // Filter States
             const [searchUser, setSearchUser] = useState('');
             const [searchProduct, setSearchProduct] = useState('');
             const [searchMachine, setSearchMachine] = useState('');
@@ -119,53 +218,47 @@
             useEffect(() => {
                 const initAuth = async () => {
                     try {
-                        if (initialToken) { await signInWithCustomToken(auth, initialToken); } 
+                        const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                        if (token) { await signInWithCustomToken(auth, token); } 
                         else { await signInAnonymously(auth); }
                     } catch (e) { setDbLoading(false); }
                 };
                 initAuth();
                 const unsubscribe = onAuthStateChanged(auth, setUser);
-                return () => unsubscribe();
+                
+                // Animasi Booting Minimal 3 Detik
+                const timer = setTimeout(() => setIsBooting(false), 3200);
+                
+                return () => {
+                    unsubscribe();
+                    clearTimeout(timer);
+                };
             }, []);
 
             useEffect(() => {
+                if (!user) return;
                 const loadConfig = async () => {
-                    // Jika ada default hardcoded, langsung pakai
-                    if (DEFAULT_SHEET_URL) {
-                        setSheetUrl(DEFAULT_SHEET_URL);
-                        fetchData(DEFAULT_SHEET_URL);
-                        setDbLoading(false);
-                        return;
-                    }
-
-                    // Cek LocalStorage dulu (paling cepat)
-                    const localUrl = localStorage.getItem('skf_url_manual');
-                    if (localUrl) {
-                        setSheetUrl(localUrl);
-                        fetchData(localUrl);
-                    }
-
-                    // Cek Firestore jika auth tersedia
-                    if (user && safeFirebaseConfig.apiKey !== "fallback") {
-                        try {
-                            // FIXED PATH: 6 segments (artifacts/ID/public/data/settings/config)
-                            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
-                            const configDoc = await getDoc(docRef);
-                            if (configDoc.exists()) {
-                                const url = configDoc.data().sheetUrl;
-                                setSheetUrl(url);
-                                fetchData(url);
-                                localStorage.setItem('skf_url_manual', url);
-                            } else if (!localUrl) {
+                    try {
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'settings');
+                        const configDoc = await getDoc(docRef);
+                        if (configDoc.exists()) {
+                            const url = configDoc.data().sheetUrl;
+                            setSheetUrl(url);
+                            fetchData(url);
+                        } else {
+                            const localUrl = localStorage.getItem('skf_url_manual');
+                            if (localUrl) {
+                                setSheetUrl(localUrl);
+                                fetchData(localUrl);
+                            } else if (DEFAULT_SHEET_URL) {
+                                setSheetUrl(DEFAULT_SHEET_URL);
+                                fetchData(DEFAULT_SHEET_URL);
+                            } else {
                                 setIsConfigOpen(true);
                             }
-                        } catch (e) {
-                            console.error("Firestore error:", e);
                         }
-                    } else if (!localUrl && !DEFAULT_SHEET_URL) {
-                        setIsConfigOpen(true);
-                    }
-                    setDbLoading(false);
+                    } catch (e) { console.error(e); } 
+                    finally { setDbLoading(false); }
                 };
                 loadConfig();
             }, [user]);
@@ -225,36 +318,28 @@
                 setError(null);
                 try {
                     const response = await fetch(`${targetUrl}&t=${new Date().getTime()}`);
-                    if (!response.ok) throw new Error("Link tidak dapat diakses.");
+                    if (!response.ok) throw new Error("Gagal mengambil data.");
                     const text = await response.text();
                     const csvLines = robustCSVParser(text);
                     setData(parseToJSON(csvLines));
                     setIsConfigOpen(false);
                     localStorage.setItem('skf_url_manual', targetUrl);
                 } catch (err) {
-                    setError("Gagal sinkronisasi data. Periksa link CSV Google Sheet Anda.");
+                    setError("Gagal sinkronisasi data dari Google Sheets.");
                 } finally {
                     setLoading(false);
                 }
             };
 
             const handleConnect = async () => {
+                if (!user) return;
                 setLoading(true);
-                localStorage.setItem('skf_url_manual', sheetUrl);
                 try {
-                    if (user && safeFirebaseConfig.apiKey !== "fallback") {
-                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
-                        await setDoc(docRef, {
-                            sheetUrl: sheetUrl,
-                            updatedAt: new Date().toISOString()
-                        });
-                    }
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'settings');
+                    await setDoc(docRef, { sheetUrl: sheetUrl, updatedAt: new Date().toISOString() });
                     await fetchData(sheetUrl);
-                } catch (e) {
-                    await fetchData(sheetUrl);
-                } finally {
-                    setLoading(false);
-                }
+                } catch (e) { await fetchData(sheetUrl); } 
+                finally { setLoading(false); }
             };
 
             const availableYears = useMemo(() => {
@@ -314,24 +399,85 @@
                 return 'bg-slate-100 text-slate-500 border-slate-200';
             };
 
-            if (dbLoading && !data.length) {
+            // Loading Screen Utama
+            if (isBooting) {
+                return <LoadingScreen />;
+            }
+
+            // Halaman Dashboard Utama
+            if (currentPage === 'dashboard') {
                 return (
-                    <div className="min-h-screen bg-[#1e3a8a] flex flex-col items-center justify-center text-white p-6">
-                        <div className="w-16 h-16 border-4 border-blue-200 border-t-white rounded-full animate-spin mb-4"></div>
-                        <h2 className="text-xl font-black uppercase tracking-widest">Inisialisasi Sistem...</h2>
+                    <div className="min-h-screen flex flex-col fade-in">
+                        <div className="fixed top-20 -left-20 opacity-[0.03] pointer-events-none"><Icon name="settings" size={400} className="gear-spin-slow text-blue-900" /></div>
+                        <div className="fixed -bottom-20 -right-20 opacity-[0.03] pointer-events-none"><Icon name="settings" size={300} className="gear-spin-reverse text-blue-900" /></div>
+
+                        <header className="bg-[#1e3a8a] text-white p-8 shadow-2xl relative overflow-hidden">
+                            <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-blue-800/50 to-transparent"></div>
+                            <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center relative z-10 gap-6">
+                                <div className="flex items-center gap-6">
+                                    <div className="bg-white p-5 rounded-2xl shadow-2xl rotate-3 hover:rotate-0 transition-transform duration-500 flex items-center justify-center">
+                                        <Icon name="wrench" size={48} className="text-[#1e3a8a]" />
+                                    </div>
+                                    <div>
+                                        <h1 className="font-black text-3xl md:text-5xl uppercase tracking-tighter leading-none italic">SISTEM INFORMASI</h1>
+                                        <p className="text-blue-200 text-lg md:text-xl font-bold uppercase tracking-[0.2em] mt-2 border-l-4 border-white pl-4">DEPARTEMEN TEKNIK SKF</p>
+                                    </div>
+                                </div>
+                                <div className="bg-blue-900/50 p-4 rounded-2xl border border-blue-700/50 backdrop-blur-md">
+                                    <div className="flex items-center gap-2 text-emerald-400 font-black text-sm">
+                                        <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                                        ONLINE & SINKRON
+                                    </div>
+                                </div>
+                            </div>
+                        </header>
+
+                        <main className="max-w-[1400px] mx-auto p-10 flex-1 w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
+                            <button 
+                                onClick={() => setCurrentPage('history')}
+                                className="group relative bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-200 hover:shadow-2xl hover:border-blue-300 transition-all duration-500 flex flex-col items-start overflow-hidden text-left"
+                            >
+                                <div className="bg-blue-600 text-white p-5 rounded-2xl mb-6 shadow-lg shadow-blue-100 group-hover:scale-110 transition-transform">
+                                    <Icon name="history" size={32} />
+                                </div>
+                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">Riwayat Permintaan</h2>
+                                <p className="text-slate-500 font-medium leading-relaxed mb-8">Pemantauan riwayat pemesanan sparepart dan status RCP ID secara real-time.</p>
+                                <div className="mt-auto flex items-center gap-2 font-black text-blue-600 uppercase text-xs tracking-widest group-hover:gap-4 transition-all">
+                                    MASUK KE HALAMAN <Icon name="arrow-right" size={16} />
+                                </div>
+                            </button>
+
+                            <div className="group relative bg-white/60 p-8 rounded-[2.5rem] shadow-md border border-slate-100 opacity-70 flex flex-col items-start grayscale">
+                                <div className="bg-slate-200 text-slate-500 p-5 rounded-2xl mb-6">
+                                    <Icon name="calendar-clock" size={32} />
+                                </div>
+                                <h2 className="text-2xl font-black text-slate-400 uppercase tracking-tight mb-2 italic">Maintenance Schedule</h2>
+                                <p className="text-slate-400 font-medium leading-relaxed italic">Segera Hadir.</p>
+                            </div>
+                        </main>
+
+                        <footer className="p-10 border-t border-slate-200 flex justify-between items-center text-slate-400">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-[#1e3a8a] text-white rounded-xl flex items-center justify-center shadow-sm">
+                                    <Icon name="wrench" size={20} />
+                                </div>
+                                <p className="text-[10px] font-black uppercase tracking-widest">SKF Industrial Solution</p>
+                            </div>
+                            <p className="text-[10px] font-black uppercase">&copy; 2026 INTERNAL SKF USE ONLY</p>
+                        </footer>
                     </div>
                 );
             }
 
             return (
-                <div className="min-h-screen pb-20">
+                <div className="min-h-screen pb-20 fade-in">
                     <header className="bg-[#1e3a8a] text-white p-6 sticky top-0 z-20 shadow-xl flex justify-between items-center border-b border-blue-800">
                         <div className="flex items-center gap-4">
-                            <div className="bg-white p-2.5 rounded-xl shadow-inner"><Icon name="wrench" className="text-[#1e3a8a]" /></div>
-                            <div>
-                                <h1 className="font-extrabold text-xl uppercase tracking-tight leading-none">Dept. Teknik SKF</h1>
-                                <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest leading-none mt-1">Inventory Request Monitoring</p>
-                            </div>
+                            <button onClick={() => setCurrentPage('dashboard')} className="bg-white/10 p-2 rounded-lg hover:bg-white hover:text-blue-900 transition-all flex items-center gap-2 font-bold text-xs uppercase tracking-widest">
+                                <Icon name="chevron-left" /> KEMBALI
+                            </button>
+                            <div className="h-8 w-[1px] bg-white/20 mx-2"></div>
+                            <h1 className="font-extrabold text-lg uppercase tracking-tight leading-none">Riwayat Permintaan</h1>
                         </div>
                         <div className="flex gap-3">
                             <button onClick={() => setIsConfigOpen(true)} className="p-3 bg-blue-800/50 rounded-xl hover:bg-blue-700 transition-all border border-blue-700/50"><Icon name="settings" size={20} /></button>
@@ -346,16 +492,12 @@
                         {isConfigOpen && (
                             <div className="bg-white p-8 rounded-[2.5rem] border-2 border-blue-100 shadow-2xl animate-in">
                                 <h2 className="text-xl font-black mb-4 flex items-center gap-3 text-slate-800 uppercase tracking-tight">
-                                    <Icon name="database" className="text-blue-600" /> Setup Spreadsheet Link
+                                    <Icon name="database" className="text-blue-600" /> Database Connection
                                 </h2>
-                                <p className="text-sm text-slate-500 mb-6">Link akan disimpan secara otomatis. Untuk pengguna di GitHub, masukkan link sekali lalu klik tombol Simpan.</p>
                                 <div className="flex flex-col md:flex-row gap-4">
-                                    <input type="text" placeholder="Masukkan URL CSV Google Sheet..." className="flex-1 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-600" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} />
-                                    <button onClick={handleConnect} disabled={loading || !sheetUrl} className="bg-[#1e3a8a] text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl disabled:opacity-50">
-                                        {loading ? 'Menyambungkan...' : 'Simpan & Hubungkan'}
-                                    </button>
+                                    <input type="text" placeholder="URL CSV Google Sheet..." className="flex-1 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-600" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} />
+                                    <button onClick={handleConnect} disabled={loading || !sheetUrl} className="bg-[#1e3a8a] text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl">Simpan Link</button>
                                 </div>
-                                <p className="text-xs text-slate-400 mt-3 italic">*Gunakan link format CSV dari menu 'Publish to web' di Google Sheets.</p>
                             </div>
                         )}
 
@@ -417,25 +559,11 @@
                                                     <tr key={i} className="hover:bg-blue-50/50 transition-all">
                                                         <td className="px-6 py-5 whitespace-nowrap text-[11px] font-bold text-slate-400">{item.date || '-'}</td>
                                                         <td className="px-6 py-5 whitespace-nowrap text-xs font-black text-slate-700">{item.requestedBy || '-'}</td>
-                                                        <td className="px-6 py-5 whitespace-nowrap">
-                                                            <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
-                                                                {item.rcpId || '-'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-5 whitespace-nowrap text-center">
-                                                            <span className={`inline-block min-w-[100px] px-3 py-2 rounded-xl text-[9px] font-black uppercase text-center border ${getStatusStyle(item.status)}`}>
-                                                                {item.status || 'N/A'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-5 text-sm font-black text-slate-900 uppercase leading-tight max-w-[300px]">
-                                                            {item.product || 'N/A'}
-                                                        </td>
-                                                        <td className="px-6 py-5 whitespace-nowrap text-sm font-black text-center text-[#1e3a8a] bg-blue-50/30">
-                                                            {item.qty || '0'} <span className="text-[9px] font-bold text-slate-400 opacity-50 uppercase">{item.unit || 'PCS'}</span>
-                                                        </td>
-                                                        <td className="px-6 py-5 whitespace-nowrap text-[11px] font-black text-slate-500 italic opacity-80">
-                                                            {item.machine || 'UMUM'}
-                                                        </td>
+                                                        <td className="px-6 py-5 whitespace-nowrap"><span className="text-[10px] font-black text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">{item.rcpId || '-'}</span></td>
+                                                        <td className="px-6 py-5 whitespace-nowrap text-center"><span className={`inline-block min-w-[100px] px-3 py-2 rounded-xl text-[9px] font-black uppercase text-center border ${getStatusStyle(item.status)}`}>{item.status || 'N/A'}</span></td>
+                                                        <td className="px-6 py-5 text-sm font-black text-slate-900 uppercase leading-tight max-w-[300px]">{item.product || 'N/A'}</td>
+                                                        <td className="px-6 py-5 whitespace-nowrap text-sm font-black text-center text-[#1e3a8a] bg-blue-50/30">{item.qty || '0'} <span className="text-[9px] font-bold text-slate-400 opacity-50 uppercase">{item.unit || 'PCS'}</span></td>
+                                                        <td className="px-6 py-5 whitespace-nowrap text-[11px] font-black text-slate-500 italic opacity-80">{item.machine || 'UMUM'}</td>
                                                     </tr>
                                                 ))
                                             )}
@@ -445,23 +573,13 @@
                             </div>
                         </div>
                     </main>
-
-                    {error && (
-                        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-red-600 text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50">
-                            <Icon name="alert-triangle" size={24} />
-                            <span className="text-sm font-black uppercase">{error}</span>
-                            <button onClick={() => setError(null)} className="ml-4 opacity-50 hover:opacity-100">✕</button>
-                        </div>
-                    )}
                 </div>
             );
         };
 
-            const StatCard = ({ label, count, color, icon }) => (
+        const StatCard = ({ label, count, color, icon }) => (
             <div className={`bg-white p-6 rounded-[2rem] border border-${color}-100 flex items-center gap-6 shadow-sm group hover:shadow-md transition-all`}>
-                <div className={`bg-${color}-50 p-4 rounded-2xl text-${color}-600 group-hover:scale-110 transition-transform shadow-inner`}>
-                    <Icon name={icon} size={32} />
-                </div>
+                <div className={`bg-${color}-50 p-4 rounded-2xl text-${color}-600 group-hover:scale-110 transition-transform shadow-inner`}><Icon name={icon} size={32} /></div>
                 <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{label} (RCP)</p>
                     <h3 className={`text-3xl font-black text-${color}-700`}>{count}</h3>
@@ -471,9 +589,7 @@
 
         const SearchInput = ({ icon, placeholder, value, onChange }) => (
             <div className="relative group">
-                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-600 transition-colors">
-                    <Icon name={icon} size={20} />
-                </span>
+                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-600 transition-colors"><Icon name={icon} size={20} /></span>
                 <input type="text" placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-50 focus:bg-white transition-all shadow-sm" />
             </div>
         );
