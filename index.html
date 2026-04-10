@@ -22,22 +22,8 @@
             font-family: 'Plus Jakarta Sans', sans-serif; 
             letter-spacing: -0.01em; 
             overflow-x: hidden;
-            background-color: #020617; /* Slate 950 */
-            color: #f1f5f9;
+            transition: background-color 0.5s ease, color 0.5s ease;
         }
-        
-        select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 1rem center;
-            background-size: 1.2em;
-        }
-
-        /* Tataletak tatalon kustom bagi tema gelap */
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         
         /* Animasi Global */
         @keyframes gear-rotate {
@@ -58,7 +44,7 @@
             100% { top: 100%; opacity: 0; } 
         }
         
-        /* Animasi Masuk */
+        /* Entrance Animations */
         @keyframes slide-up-fade {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -91,120 +77,101 @@
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
+        /* Scrollbar Dinamis */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .theme-dark .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .theme-dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .theme-light .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .theme-light .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* --- Animasi Kartu Berbalik (Flip Card) --- */
+        .card-flip-container {
+            perspective: 1500px;
+            height: 400px;
+        }
+        .card-flip-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+        .card-flip-inner.flipped {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+        }
+
+        /* Tema Khusus Dark Mode */
+        .theme-dark .glass-card {
+            background-color: rgba(30, 41, 59, 0.5); 
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(71, 85, 105, 0.3);
+        }
+
+        .theme-dark .org-card-front {
+            background-color: #000d1a;
+            border: 1px solid #004d66;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .theme-dark .org-card-back {
+            background-color: #001529;
+            border: 1px solid #00d9ff;
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+        }
+
+        /* Tema Khusus Light Mode */
+        .theme-light .org-card-front {
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        }
+
+        .theme-light .org-card-back {
+            background-color: #f8fafc;
+            border: 1px solid #3b82f6;
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1);
+        }
+
         .loading-screen {
-            background: linear-gradient(135deg, #020617 0%, #0f172a 100%);
             z-index: 9999;
+        }
+        .theme-dark .loading-screen {
+            background: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+        }
+        .theme-light .loading-screen {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         }
 
         .scan-overlay {
             height: 150px;
-            background: linear-gradient(to bottom, transparent, rgba(56, 189, 248, 0.1), transparent);
             position: absolute;
             width: 100%;
             animation: scan-line 4s ease-in-out infinite;
             pointer-events: none;
         }
 
-        .glass-card {
-            background-color: rgba(30, 41, 59, 0.5); 
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(71, 85, 105, 0.3);
+        .theme-dark .scan-overlay {
+            background: linear-gradient(to bottom, transparent, rgba(56, 189, 248, 0.1), transparent);
         }
 
-        .org-container {
-            background-color: #000d1a;
-            border: 1px solid #004d66;
-            border-radius: 1.5rem;
-            overflow: hidden;
-            box-shadow: 0 10px 40px -12px rgba(0, 0, 0, 0.7);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .org-header {
-            padding: 1.5rem 2rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background-color: #000d1a;
-            transition: background-color 0.2s;
-        }
-        
-        .org-header:hover {
-            background-color: #0a1a29;
+        .theme-light .scan-overlay {
+            background: linear-gradient(to bottom, transparent, rgba(37, 99, 235, 0.05), transparent);
         }
 
-        .org-section-title {
-            color: #00d9ff;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            font-size: 1.25rem;
-        }
-
-        .org-content {
-            padding: 0 2rem 2.5rem 2rem;
-            background-color: #000d1a;
-            display: none;
-            overflow: hidden;
-        }
-
-        .org-content.active {
-            display: block;
-            border-top: 1px solid #004d66;
-            animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        @keyframes slideDown {
-            from { opacity: 0; max-height: 0; transform: translateY(-10px); }
-            to { opacity: 1; max-height: 1500px; transform: translateY(0); }
-        }
-
-        .org-subsection-title {
-            color: #55e5ff;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            font-size: 0.7rem;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid rgba(85, 229, 255, 0.3);
-        }
-
-        .org-card-item {
-            background-color: #0a1a29;
-            border: 1px solid #1a334d;
-            border-radius: 0.75rem;
-            padding: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            margin-bottom: 0.5rem;
-        }
-
-        .org-card-item:hover {
-            border-color: #00d9ff;
-            background-color: #0d253b;
-            transform: translateX(8px);
-            box-shadow: -5px 0 0 #00d9ff;
-        }
-
-        .avatar-circle {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background-color: #00acc1;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 0.8rem;
-            flex-shrink: 0;
-        }
-
-        /* Gaya Khusus Panduan */
         .step-pill {
             background: linear-gradient(135deg, #00d9ff 0%, #0088cc 100%);
             width: 40px;
@@ -218,61 +185,72 @@
             flex-shrink: 0;
             box-shadow: 0 0 15px rgba(0, 217, 255, 0.4);
         }
-        
-        .guide-banner {
-            background: linear-gradient(to right, #1e3a8a, #00d9ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
     </style>
 </head>
-<body>
+<body class="theme-dark bg-[#020617] text-slate-100">
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- KONFIGURASI DENGAN PENGAMAN ---
-        let firebaseConfig = {
-            apiKey: "dummy-key", authDomain: "dummy.firebaseapp.com", projectId: "dummy-project",
-            storageBucket: "dummy.appspot.com", messagingSenderId: "000", appId: "0:000:web:000"
-        };
-
-        try {
-            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                firebaseConfig = JSON.parse(__firebase_config);
-            }
-        } catch (e) {
-            console.warn("Menggunakan konfigurasi sandaran.");
-        }
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'skf-engineering-prod';
-
-        const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4knvzFbNvsWJjs88zESzputbexr6c6Yqyl_L8aAH8F9JKW0tA5cjgnzF5UJI7qZLeo6r0x9IoPDBO/pub?output=csv"; 
-
         const { useState, useEffect, useMemo, useRef } = React;
 
         // ==========================================
-        // FUNGSI PEMBANTU (SKOP GLOBAL)
+        // DATA STATIS & KONFIGURASI (GLOBAL)
         // ==========================================
-        const getStatusStyle = (status) => {
-            const s = status?.toUpperCase() || '';
-            if (s.includes('DONE')) return 'bg-emerald-900/50 text-emerald-400 border-emerald-500/50 shadow-sm shadow-emerald-500/10';
-            if (s.includes('APPROV')) return 'bg-amber-900/50 text-amber-400 border-amber-500/50 shadow-sm shadow-amber-500/10';
-            if (s.includes('CANCEL')) return 'bg-red-900/50 text-red-400 border-red-500/50 shadow-sm shadow-red-500/10';
-            if (s.includes('CONFIRM')) return 'bg-slate-800/50 text-slate-300 border-slate-600/50 shadow-sm';
-            return 'bg-slate-900/30 text-slate-500 border-slate-800';
-        };
+        const listMonths = [
+            { name: 'Januari', val: 'Jan' }, { name: 'Februari', val: 'Feb' },
+            { name: 'Maret', val: 'Mar' }, { name: 'April', val: 'Apr' },
+            { name: 'Mei', val: 'May' }, { name: 'Juni', val: 'Jun' },
+            { name: 'Juli', val: 'Jul' }, { name: 'Agustus', val: 'Aug' },
+            { name: 'September', val: 'Sep' }, { name: 'Oktober', val: 'Oct' },
+            { name: 'November', val: 'Nov' }, { name: 'Desember', val: 'Dec' }
+        ];
 
-        const parseCSVToJSON = (text) => {
+        const orgData = [
+            { id: "adm", title: "Administration", icon: "clipboard-check", columns: [{ title: "KEY LEADERS", members: [{n: "Deni Kristanto", r: "GENERAL SPV PROSES"}, {n: "Agung Budi S", r: "GENERAL SPV PACKAGING"}] }, { title: "ADMINISTRATION", members: [{n: "Ari Anjasmara", r: "ADMIN DOWNTIME PROSES"}, {n: "Fawwaz Hafiyulloh", r: "ADMIN PENGADAAN SPAREPART"}] }] },
+            { id: "ele", title: "Electrical Engineer", icon: "zap", columns: [{ title: "KEY LEADERS", members: [{n: "Erik Rian Arifin", r: "PIC ELECTRIC"}, {n: "Deni Kristanto", r: "GENERAL SPV PROSES"}] }, { title: "ELECTRICAL TEAM", members: [{n: "Mohammad Rohmatulloh Ramadhan", r: "ELECTRICAL PLC"}, {n: "Muhammad Afrizal", r: "GENERAL ELECTRICAL"}, {n: "Desta Wahyu Riski", r: "GENERAL ELECTRICAL"}] }] },
+            { id: "wsall", title: "Wafer Stick All Plant", icon: "bar-chart-3", columns: [{ title: "KEY LEADERS", members: [{n: "Baidillah", r: "PIC WAFER STICK ALL"}, {n: "Deni Kristanto", r: "GENERAL SPV PROSES"}] }, { title: "MAINTENANCE NON-SHIFT", members: [{n: "Tursiman", r: "MAINTENANCE"}, {n: "Ari Wiyoko", r: "MAINTENANCE"}, {n: "Yuslim", r: "MAINTENANCE"}] }, { title: "PROSES SHIFT A/B/C", members: [{n: "Andika Pratama", r: "PROSES MI A"}, {n: "Rahmatul Dafa", r: "PROSES GF A"}, {n: "Wawan Teguh", r: "PROSES MI B"}, {n: "Wildan Lukianto", r: "PROSES GF B"}, {n: "Subandi", r: "PROSES MI C"}, {n: "Imron", r: "PROSES GF C"}] }] },
+            { id: "wgf", title: "Wafer GF & Plant 3", icon: "layers", columns: [{ title: "KEY LEADERS", members: [{n: "Poniman", r: "SPV WAFER GF & PLANT 3"}] }, { title: "MAINTENANCE NON-SHIFT", members: [{n: "Sandy Edi Syah", r: "PIC MAINTENANCE PROSES PLANT 3"}, {n: "Muhammad Fani Asror", r: "MAINTENANCE PROSES GF"}, {n: "Agil Revan", r: "MAINTENANCE PROSES PLANT 3"}] }, { title: "PROSES SHIFT A/B/C", members: [{n: "Arya Nugik", r: "PROSES GF A"}, {n: "Johan", r: "PROSES GF B"}, {n: "Eko Pratomo", r: "PROSES GF C"}, {n: "Muhammad Fahmi Hidayat", r: "PROSES PLANT 3 A"}, {n: "Bagus Adi", r: "PROSES PLANT 3 B"}, {n: "Rafli Iwan Purwanto", r: "PROSES PLANT 3 C"}] }] },
+            { id: "wupa", title: "Wafer UPA", icon: "cpu", columns: [{ title: "KEY LEADERS", members: [{n: "M. Purwadi", r: "SPV WAFER UPA"}] }, { title: "MAINTENANCE NON-SHIFT", members: [{n: "Muhammad Anang", r: "PIC MAINTENANCE PROSES UPA"}, {n: "Dadang", r: "MAINTENANCE PROSES UPA"}] }, { title: "PROSES SHIFT A/B/C", members: [{n: "Hengki Saputro", r: "PROSES UPA A"}, {n: "Bayu Candra Prasetyono", r: "PROSES UPA B"}, {n: "Dandi", r: "PROSES UPA C"}] }] },
+            { id: "pkg", title: "Maintenance Packaging", icon: "package", columns: [{ title: "KEY LEADERS", members: [{n: "Agung Budi Setiawan", r: "GENERAL SPV PACKAGING"}] }, { title: "MAINTENANCE NON-SHIFT", members: [{n: "Moh Jaini", r: "PIC MAINTENACE MAYORA"}, {n: "Sutik", r: "PIC MAINTENANCE GF (HORIZONTAL & VERTIKAL)"}, {n: "M. Fazal Ashari", r: "PIC MAINTENANCE NABATI SNACK & KAWASHIMA"}, {n: "Ryan", r: "MAINTENANCE NABATI ROLLS & PLANT 3"}] }, { title: "TEKNIK SHIFT MAYORA", members: [{n: "Bagus Setiawan", r: "MAYORA SHIFT A"}, {n: "Feri", r: "MAYORA SHIFT A"}, {n: "Soni Prasetia", r: "MAYORA SHIFT B"}, {n: "Ahmad Rofik", r: "MAYORA SHIFT B"}, {n: "Muhammad Adi Novid", r: "MAYORA SHIFT C"}, {n: "Nur Maarif", r: "MAYORA SHIFT C"}] }, { title: "TEKNIK SHIFT GF", members: [{n: "Ahmad Khoirudin", r: "GF SHIFT A"}, {n: "Adit Prasetyo", r: "GF SHIFT B"}, {n: "Lucky Lukman", r: "GF SHIFT C"}] }, { title: "TEKNIK SHIFT PLANT 3", members: [{n: "Ilyas Saiful Aziz", r: "PLANT 3 SHIFT A"}, {n: "Fiki Mahda", r: "PLANT 3 SHIFT B"}, {n: "Ahmad Sobirin", r: "PLANT 3 SHIFT C"}] }, { title: "TEKNIK SHIFT NABATI ROLLS", members: [{n: "Ahmad Dzikri", r: "NABATI ROLLS SHIFT A"}, {n: "Muhammad Nizar Royyan", r: "NABATI ROLLS SHIFT B"}, {n: "M. Iqbaludin", r: "NABATI ROLLS SHIFT C"}] }, { title: "TEKNIK SHIFT UPA", members: [{n: "Alan", r: "UPA SHIFT A"}, {n: "Bagus Prasetyo Ramadhan", r: "UPA SHIFT B"}, {n: "M. Rendi", r: "UPA SHIFT C"}] }] },
+            { id: "uti", title: "Utility", icon: "wrench", columns: [{ title: "KEY LEADERS", members: [{n: "M. Surip", r: "PIC OF UTILITY"}, {n: "Deni Kristanto", r: "GENERAL SPV PROSES"}] }, { title: "MAINTENANCE NON-SHIFT", members: [{n: "Arik Supriyanto", r: "MAINTENANCE UTILITY"}, {n: "Arif Prasetyo", r: "MAINTENANCE PROSES"}] }, { title: "TEKNIK SHIFT A/B/C", members: [{n: "Mokhamad Aris", r: "TEKNIK UTILITY SHIFT A"}, {n: "Muktasim Billillah", r: "TEKNIK UTILITY SHIFT B"}, {n: "Andi Firdani Yahya", r: "TEKNIK UTILITY SHIFT C"}] }] },
+            { id: "nbt", title: "Nabati Extrude", icon: "sprout", columns: [{ title: "KEY LEADERS", members: [{n: "Deni Kristanto", r: "GENERAL SPV PROSES"}, {n: "Basuki Setyo Utomo", r: "MAINTENANCE NON-SHIFT"}] }, { title: "TEKNIK SHIFT A/B/C", members: [{n: "Fiki Muhammad Subur", r: "TEKNIK SHIFT A"}, {n: "Farid", r: "TEKNIK SHIFT B"}, {n: "Dwi Okta", r: "TEKNIK SHIFT C"}] }] },
+            { id: "wsh", title: "Workshop", icon: "hammer", columns: [{ title: "KEY LEADERS", members: [{n: "Jamil", r: "PIC WORKSHOP"}, {n: "Deni Kristanto", r: "GENERAL SPV PROSES"}] }, { title: "WORKSHOP TEAM", members: [{n: "Agung setiawan", r: "WORKSHOP"}, {n: "Rizky Nur S", r: "WORKSHOP"}] }] }
+        ];
+
+        const requestFlow = [
+            { id: 1, title: "Pencatatan Awal", desc: "User menulis permintaan di LOG BOOK RCP" },
+            { id: 2, title: "Entri Data", desc: "Admin menginput data ke SISTEM ODOO" },
+            { id: 3, title: "Verifikasi RCP", desc: "RCP disetujui (Approved) oleh Pak Deni" },
+            { id: 4, title: "Penyusunan PR", desc: "Purchase Request dibuat oleh Admin GSP" },
+            { id: 5, title: "Otorisasi PR", desc: "PR disetujui (Approved) oleh Pak Agus" },
+            { id: 8, title: "Pemesanan", desc: "Purchasing menerbitkan RO (Receipt Order)" },
+            { id: 7, title: "Penerimaan", desc: "Barang datang di gudang sparepart" },
+            { id: 9, title: "Penyerahan", desc: "Serah terima barang ke user oleh Admin GSP" }
+        ];
+
+        // ==========================================
+        // FUNGSI PEMBANTU (GLOBAL)
+        // ==========================================
+        function getStatusStyle(status, isDark) {
+            const s = status?.toUpperCase() || '';
+            if (isDark) {
+                if (s.includes('DONE')) return 'bg-emerald-900/50 text-emerald-400 border-emerald-500/50';
+                if (s.includes('APPROV')) return 'bg-amber-900/50 text-amber-400 border-amber-500/50';
+                if (s.includes('CANCEL')) return 'bg-red-900/50 text-red-400 border-red-500/50';
+                if (s.includes('CONFIRM')) return 'bg-slate-800/50 text-slate-300 border-slate-600/50';
+                return 'bg-slate-900/30 text-slate-500 border-slate-800';
+            } else {
+                if (s.includes('DONE')) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                if (s.includes('APPROV')) return 'bg-amber-100 text-amber-700 border-amber-200';
+                if (s.includes('CANCEL')) return 'bg-red-100 text-red-700 border-red-200';
+                if (s.includes('CONFIRM')) return 'bg-slate-100 text-slate-700 border-slate-200';
+                return 'bg-gray-50 text-gray-500 border-gray-100';
+            }
+        }
+
+        function parseCSVToJSON(text) {
             const lines = text.split('\n').filter(l => l.trim() !== '');
             if (lines.length < 2) return [];
-
             const rows = lines.map(line => {
                 const currentRow = [];
                 let field = '';
@@ -285,21 +263,15 @@
                 currentRow.push(field.trim());
                 return currentRow;
             });
-
-            const rawHeaders = rows[0];
-            const normalizedHeaders = rawHeaders.map(h => h.toLowerCase().replace(/\s/g, '').replace(/[^a-z0-9]/g, ''));
-
+            const normalizedHeaders = rows[0].map(h => h.toLowerCase().replace(/\s/g, '').replace(/[^a-z0-9]/g, ''));
             return rows.slice(1).map(row => {
                 const findValueStrict = (keywords, blockKeywords = []) => {
                     const cleanKeywords = keywords.map(k => k.toLowerCase().replace(/\s/g, ''));
                     const cleanBlocks = blockKeywords.map(k => k.toLowerCase().replace(/\s/g, ''));
                     let index = normalizedHeaders.findIndex(h => cleanKeywords.some(k => h === k));
-                    if (index === -1) {
-                        index = normalizedHeaders.findIndex(h => cleanKeywords.some(k => h.includes(k)) && !cleanBlocks.some(b => h.includes(b)));
-                    }
+                    if (index === -1) index = normalizedHeaders.findIndex(h => cleanKeywords.some(k => h.includes(k)) && !cleanBlocks.some(b => h.includes(b)));
                     return index !== -1 ? (row[index] || '') : '';
                 };
-
                 return {
                     date: findValueStrict(['requestdate', 'tanggal', 'timestamp', 'date']),
                     requestedBy: findValueStrict(['requestedby', 'peminta', 'nama', 'user']),
@@ -311,12 +283,14 @@
                     machine: findValueStrict(['machine', 'mesin', 'line', 'area', 'machineline'])
                 };
             });
-        };
+        }
 
-        // Komponen Ikon Lucide
-        const Icon = ({ name, size = 20, className = "", spin = false }) => {
+        // ==========================================
+        // KOMPONEN PENDUKUNG
+        // ==========================================
+        function Icon({ name, size = 20, className = "", spin = false }) {
             const iconRef = useRef(null);
-            const renderIcon = () => {
+            useEffect(() => {
                 if (window.lucide && iconRef.current) {
                     window.lucide.createIcons({
                         root: iconRef.current,
@@ -324,57 +298,162 @@
                         nameAttr: 'data-lucide'
                     });
                 }
-            };
-            useEffect(() => {
-                renderIcon();
-                const t = setTimeout(renderIcon, 150);
-                return () => clearTimeout(t);
             }, [name, size, className, spin]);
             return <span ref={iconRef} className={`inline-flex items-center justify-center ${spin ? 'animate-spin' : ''} ${className}`}><i data-lucide={name}></i></span>;
-        };
+        }
 
-        // Skrin Pemuatan
-        const LoadingScreen = () => {
-            const statuses = ["Menyambung ke Pangkalan Data Selamat...", "Memulakan Modul Teknikal...", "But Sistem Pusat SKF..."];
-            const [status, setStatus] = useState(statuses[0]);
-            
+        function LoadingScreen({ isDark }) {
+            const [status, setStatus] = useState("Connecting to Secure Database...");
             useEffect(() => {
+                const statuses = ["Connecting to Secure Database...", "Initializing Technical Modules...", "Booting SKF Central System..."];
                 let i = 0;
                 const interval = setInterval(() => { 
-                    if (i < statuses.length - 1) {
-                        i++;
-                        setStatus(statuses[i]);
-                    }
+                    if (i < statuses.length - 1) { i++; setStatus(statuses[i]); }
                 }, 1000);
                 return () => clearInterval(interval);
             }, []);
-
             return (
-                <div className="fixed inset-0 loading-screen flex flex-col items-center justify-center text-white overflow-hidden">
+                <div className="fixed inset-0 loading-screen flex flex-col items-center justify-center overflow-hidden">
                     <div className="scan-overlay"></div>
                     <div className="relative mb-12 scale-150">
-                        <Icon name="settings" size={100} className="text-sky-400 gear-spin-slow opacity-20" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <Icon name="settings" size={50} className="text-white gear-spin-reverse" />
-                        </div>
+                        <Icon name="settings" size={100} className={`${isDark ? 'text-sky-400' : 'text-blue-600'} gear-spin-slow opacity-20`} />
+                        <div className="absolute inset-0 flex items-center justify-center"><Icon name="settings" size={50} className={`${isDark ? 'text-white' : 'text-blue-900'} gear-spin-reverse`} /></div>
                     </div>
                     <div className="text-center z-10">
-                        <h2 className="text-2xl font-black uppercase tracking-[0.4em] mb-4 drop-shadow-lg text-white italic text-center">DEPT. TEKNIK SKF</h2>
-                        <p className="text-[10px] font-black text-sky-300 uppercase tracking-widest h-4 pulse-text text-center">{status}</p>
+                        <h2 className={`text-2xl font-black uppercase tracking-[0.4em] mb-4 drop-shadow-lg italic text-center ${isDark ? 'text-white' : 'text-blue-900'}`}>DEPT. TEKNIK SKF</h2>
+                        <p className={`text-[10px] font-black uppercase tracking-widest h-4 pulse-text text-center ${isDark ? 'text-sky-300' : 'text-blue-600'}`}>{status}</p>
                     </div>
                 </div>
             );
-        };
+        }
 
-        const App = () => {
+        function OrganizationCard({ section, isDark }) {
+            const [isFlipped, setIsFlipped] = useState(false);
+            return (
+                <div className="card-flip-container animate-entrance">
+                    <div className={`card-flip-inner ${isFlipped ? 'flipped' : ''}`} onClick={() => setIsFlipped(!isFlipped)}>
+                        <div className={`card-front org-card-front p-10 items-center justify-center text-center gap-6`}>
+                            <div className={`${isDark ? 'bg-sky-500 text-slate-950 shadow-[0_0_20px_rgba(0,217,255,0.4)]' : 'bg-blue-600 text-white shadow-xl'} p-6 rounded-2xl`}><Icon name={section.icon} size={48} /></div>
+                            <div>
+                                <h3 className={`text-xl font-black uppercase tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>{section.title}</h3>
+                                <div className="mt-4 flex items-center justify-center gap-2 text-[10px] font-black text-sky-500 uppercase tracking-widest">Lihat Struktur <Icon name="mouse-pointer-2" size={12} /></div>
+                            </div>
+                        </div>
+                        <div className={`card-back org-card-back p-6 custom-scrollbar overflow-y-auto`}>
+                            <div className="flex items-center justify-between mb-4 border-b border-sky-900/30 pb-3">
+                                <h3 className={`text-xs font-black uppercase tracking-widest ${isDark ? 'text-sky-400' : 'text-blue-700'}`}>{section.title}</h3>
+                                <Icon name="rotate-ccw" size={14} className="text-slate-500" />
+                            </div>
+                            <div className="space-y-6">
+                                {section.columns.map((col, cIdx) => (
+                                    <div key={cIdx}>
+                                        <h4 className={`text-[9px] font-black uppercase tracking-widest mb-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{col.title}</h4>
+                                        <div className="space-y-2">
+                                            {col.members.map((mem, mIdx) => (
+                                                <div key={mIdx} className={`p-3 rounded-xl border flex items-center gap-3 ${isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-100'}`}>
+                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${isDark ? 'bg-sky-500 text-slate-950' : 'bg-blue-600 text-white'}`}>{mem.n.charAt(0)}</div>
+                                                    <div className="flex flex-col">
+                                                        <span className={`text-[10px] font-black uppercase ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{mem.n}</span>
+                                                        <span className={`text-[8px] font-bold uppercase tracking-tighter ${isDark ? 'text-sky-600' : 'text-blue-500'}`}>{mem.r}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function MenuCard({ icon, title, desc, onClick, color, className, isDark }) {
+            return (
+                <button onClick={onClick} className={`group relative p-8 rounded-[2.5rem] shadow-xl border transition-all duration-500 text-left overflow-hidden focus:outline-none hover:-translate-y-2 active:scale-95 ${isDark ? 'bg-slate-900 border-slate-800 hover:border-sky-500/50' : 'bg-white border-slate-100 hover:shadow-2xl hover:border-blue-400'} ${className}`}>
+                    <div className={`absolute -right-6 -top-6 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-700 ${isDark ? 'text-sky-500' : 'text-blue-900'}`}><Icon name={icon} size={150} /></div>
+                    <div className={`${color} text-white p-5 rounded-2xl mb-6 shadow-lg group-hover:rotate-12 transition-transform duration-300`}><Icon name={icon} size={32} /></div>
+                    <h2 className={`text-2xl font-black uppercase tracking-tight mb-2 leading-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>{title}</h2>
+                    <p className={`font-medium leading-relaxed mb-8 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{desc}</p>
+                    <div className={`mt-auto flex items-center gap-2 font-black uppercase text-[10px] tracking-widest group-hover:gap-4 transition-all ${isDark ? 'text-sky-400' : 'text-blue-700'}`}>MASUK <Icon name="arrow-right" size={16} /></div>
+                </button>
+            );
+        }
+
+        function StatCard({ label, count, color, icon, className, isDark }) {
+            return (
+                <div className={`p-6 rounded-[2rem] flex items-center gap-6 shadow-sm group hover:shadow-lg transition-all ${isDark ? 'glass-card' : 'bg-white border border-slate-100 shadow-md'} ${className}`}>
+                    <div className={`p-4 rounded-2xl animate-float shadow-inner border ${isDark ? `bg-${color}-950/50 text-${color}-400 border-${color}-500/20` : `bg-${color}-50 text-${color}-600 border-${color}-100`}`}><Icon name={icon} size={32} /></div>
+                    <div><p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p><h3 className={`text-3xl font-black ${isDark ? `text-${color}-400` : `text-${color}-600`}`}>{count}</h3></div>
+                </div>
+            );
+        }
+
+        function SearchInput({ icon, placeholder, value, onChange, isDark }) {
+            return (
+                <div className="relative group">
+                    <span className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors ${isDark ? 'text-slate-500 group-focus-within:text-sky-400' : 'text-slate-300 group-focus-within:text-blue-600'}`}><Icon name={icon} size={20} /></span>
+                    <input type="text" placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} className={`w-full pl-14 pr-6 py-4 border-2 rounded-2xl font-bold text-sm outline-none transition-all shadow-sm ${isDark ? 'bg-slate-900/50 border-slate-800 focus:ring-4 focus:ring-sky-500/20 focus:border-sky-500/30 text-white placeholder-slate-600' : 'bg-slate-50 border-slate-100 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/30 text-slate-700'}`} />
+                </div>
+            );
+        }
+
+        function GuideSelectCard({ icon, title, onClick, isDark }) {
+            return (
+                <button onClick={onClick} className={`p-8 rounded-[2rem] border transition-all group flex flex-col items-center text-center gap-4 active:scale-95 ${isDark ? 'glass-card border-slate-800 hover:border-sky-400/50' : 'bg-white border-slate-100 shadow-lg hover:border-blue-400'}`}>
+                    <div className={`p-5 rounded-2xl group-hover:scale-110 transition-transform ${isDark ? 'bg-sky-500/10 text-sky-400' : 'bg-blue-600/10 text-blue-600'}`}><Icon name={icon} size={40} /></div>
+                    <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-800'}`}>{title}</h3>
+                    <Icon name="arrow-right" className={`${isDark ? 'text-slate-600 group-hover:text-sky-400' : 'text-slate-300 group-hover:text-blue-600'} transition-colors`} />
+                </button>
+            );
+        }
+
+        function K3Item({ text, icon, color, isDark }) {
+            return (
+                <div className={`p-5 rounded-2xl flex items-center gap-4 border ${isDark ? 'glass-card' : 'bg-white border-slate-100 shadow-sm'} ${color === 'amber' ? 'border-amber-500/20' : 'border-emerald-500/20'}`}>
+                    <Icon name={icon} className={color === 'amber' ? 'text-amber-500' : 'text-emerald-500'} />
+                    <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{text}</span>
+                </div>
+            );
+        }
+
+        function GmpItem({ title, desc }) {
+            return (
+                <div className="flex gap-4 items-start">
+                    <div className="w-1.5 h-10 bg-sky-500 rounded-full mt-1"></div>
+                    <div>
+                        <h4 className="font-black text-sky-400 text-xs uppercase tracking-widest">{title}</h4>
+                        <p className="text-slate-400 text-[11px] font-bold uppercase leading-relaxed mt-1">{desc}</p>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // KOMPONEN UTAMA
+        // ==========================================
+        function App() {
             const [isBooting, setIsBooting] = useState(true);
+            const [theme, setTheme] = useState(localStorage.getItem('skf_theme') || 'dark');
             const [currentPage, setCurrentPage] = useState('dashboard');
             const [openAccordion, setOpenAccordion] = useState(null);
             
             const [data, setData] = useState([]);
             const [loading, setLoading] = useState(false);
             const [user, setUser] = useState(null);
-            const [error, setError] = useState(null);
+            
+            const [sheetUrl, setSheetUrl] = useState(localStorage.getItem('skf_url_manual') || "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4knvzFbNvsWJjs88zESzputbexr6c6Yqyl_L8aAH8F9JKW0tA5cjgnzF5UJI7qZLeo6r0x9IoPDBO/pub?output=csv");
+            const [isConfigOpen, setIsConfigOpen] = useState(false);
+
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            const isDark = theme === 'dark';
+
+            useEffect(() => {
+                document.body.className = isDark ? "theme-dark bg-[#020617] text-slate-100" : "theme-light bg-slate-50 text-slate-900";
+                localStorage.setItem('skf_theme', theme);
+            }, [theme]);
 
             const [searchUser, setSearchUser] = useState('');
             const [searchProduct, setSearchProduct] = useState('');
@@ -382,38 +461,19 @@
             const [statusFilter, setStatusFilter] = useState('Semua');
             const [monthFilter, setMonthFilter] = useState('Semua');
             const [yearFilter, setYearFilter] = useState('Semua');
-            
-            const [sheetUrl, setSheetUrl] = useState(localStorage.getItem('skf_url_manual') || DEFAULT_SHEET_URL);
-            const [isConfigOpen, setIsConfigOpen] = useState(false);
-
-            const chartRef = useRef(null);
-            const chartInstance = useRef(null);
-
-            const listMonths = [
-                { name: 'Januari', val: 'Jan' }, { name: 'Februari', val: 'Feb' },
-                { name: 'Maret', val: 'Mar' }, { name: 'April', val: 'Apr' },
-                { name: 'Mei', val: 'May' }, { name: 'Juni', val: 'Jun' },
-                { name: 'Juli', val: 'Jul' }, { name: 'Agustus', val: 'Aug' },
-                { name: 'September', val: 'Sep' }, { name: 'Oktober', val: 'Oct' },
-                { name: 'November', val: 'Nov' }, { name: 'Desember', val: 'Dec' }
-            ];
-
-            const searchUserLower = searchUser.toLowerCase();
-            const searchProductLower = searchProduct.toLowerCase();
-            const searchMachineLower = searchMachine.toLowerCase();
 
             const filteredData = useMemo(() => {
                 return data.filter(item => {
                     const dateStr = item.date || "";
-                    const match = (val, search) => (val || '').toLowerCase().includes(search);
-                    return match(item.requestedBy, searchUserLower) && 
-                           match(item.product, searchProductLower) && 
-                           match(item.machine, searchMachineLower) && 
+                    const match = (val, search) => (val || '').toLowerCase().includes(search.toLowerCase());
+                    return match(item.requestedBy, searchUser) && 
+                           match(item.product, searchProduct) && 
+                           match(item.machine, searchMachine) && 
                            (statusFilter === 'Semua' || (item.status || '').toUpperCase() === statusFilter.toUpperCase()) &&
                            (monthFilter === 'Semua' || dateStr.includes(monthFilter)) &&
                            (yearFilter === 'Semua' || dateStr.includes(yearFilter));
                 });
-            }, [data, searchUserLower, searchProductLower, searchMachineLower, statusFilter, monthFilter, yearFilter]);
+            }, [data, searchUser, searchProduct, searchMachine, statusFilter, monthFilter, yearFilter]);
 
             const rcpStats = useMemo(() => {
                 const stats = { DONE: new Set(), APPROVED: new Set(), CONFIRMED: new Set(), CANCELED: new Set() };
@@ -437,56 +497,39 @@
                 return [...new Set(years)].sort((a, b) => b - a);
             }, [data]);
 
-            // Pemulaan Carta (Optimasi Mod Gelap)
             useEffect(() => {
                 if (currentPage === 'history' && chartRef.current && !loading) {
                     const ctx = chartRef.current.getContext('2d');
                     if (chartInstance.current) chartInstance.current.destroy();
+                    const textColor = isDark ? '#94a3b8' : '#64748b';
+                    const gridColor = isDark ? 'rgba(71, 85, 105, 0.1)' : 'rgba(226, 232, 240, 0.8)';
                     chartInstance.current = new Chart(ctx, {
                         type: 'bar',
                         data: {
                             labels: ['DONE', 'APPROVED', 'CONFIRMED', 'CANCELED'],
                             datasets: [{
-                                label: 'Jumlah RCP (ID Unik)',
+                                label: 'Jumlah RCP',
                                 data: [rcpStats.DONE, rcpStats.APPROVED, rcpStats.CONFIRMED, rcpStats.CANCELED],
-                                backgroundColor: [
-                                    'rgba(16, 185, 129, 0.6)', 
-                                    'rgba(245, 158, 11, 0.6)', 
-                                    'rgba(148, 163, 184, 0.6)', 
-                                    'rgba(239, 68, 68, 0.6)'
-                                ],
-                                borderColor: ['#10b981', '#f59e0b', '#94a3b8', '#ef4444'],
-                                borderWidth: 2, borderRadius: 12, barThickness: 40
+                                backgroundColor: isDark ? 
+                                    ['rgba(16, 185, 129, 0.6)', 'rgba(245, 158, 11, 0.6)', 'rgba(148, 163, 184, 0.6)', 'rgba(239, 68, 68, 0.6)'] :
+                                    ['#10b981', '#f59e0b', '#94a3b8', '#ef4444'],
+                                borderColor: isDark ? ['#10b981', '#f59e0b', '#94a3b8', '#ef4444'] : 'transparent',
+                                borderWidth: isDark ? 2 : 0, borderRadius: 12, barThickness: 40
                             }]
                         },
                         options: {
                             responsive: true, maintainAspectRatio: false,
-                            plugins: { 
-                                legend: { display: false },
-                                tooltip: {
-                                    backgroundColor: '#0f172a',
-                                    titleFont: { family: 'Plus Jakarta Sans', weight: '800' },
-                                    bodyFont: { family: 'Plus Jakarta Sans' },
-                                    padding: 12, cornerRadius: 12
-                                }
-                            },
+                            plugins: { legend: { display: false } },
                             scales: { 
-                                y: { 
-                                    beginAtZero: true,
-                                    grid: { color: 'rgba(71, 85, 105, 0.1)' },
-                                    ticks: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans', weight: '600' } }
-                                }, 
-                                x: { 
-                                    grid: { display: false },
-                                    ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', weight: '800' } }
-                                } 
+                                y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor } }, 
+                                x: { grid: { display: false }, ticks: { color: textColor } } 
                             }
                         }
                     });
                 }
-            }, [rcpStats, currentPage, loading]);
+            }, [rcpStats, currentPage, loading, theme]);
 
-            const fetchData = async (url) => {
+            const fetchDataInternal = async (url) => {
                 if (!url) return;
                 setLoading(true);
                 try {
@@ -494,407 +537,237 @@
                     const text = await response.text();
                     setData(parseCSVToJSON(text));
                     localStorage.setItem('skf_url_manual', url);
-                } catch (err) { setError("Gagal penyelarasan data."); } finally { setLoading(false); }
+                } catch (err) { console.error(err); } finally { setLoading(false); }
             };
 
             const handleConnect = async () => {
                 setLoading(true);
                 try {
-                    if (user && firebaseConfig.apiKey !== "dummy-key") {
-                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'settings'), { sheetUrl, updatedAt: new Date().toISOString() });
-                    }
-                    await fetchData(sheetUrl);
-                } catch (e) { await fetchData(sheetUrl); } 
-                finally { setLoading(false); }
+                    await fetchDataInternal(sheetUrl);
+                } catch (e) { } finally { setLoading(false); }
             };
 
             useEffect(() => {
-                const initAuth = async () => {
-                    try {
-                        const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                        if (token) await signInWithCustomToken(auth, token); else await signInAnonymously(auth);
-                    } catch (e) {}
+                const init = async () => {
+                    const timer = setTimeout(() => setIsBooting(false), 3200);
+                    fetchDataInternal(sheetUrl);
+                    return () => clearTimeout(timer);
                 };
-                initAuth();
-                const unsubscribe = onAuthStateChanged(auth, setUser);
-                const timer = setTimeout(() => setIsBooting(false), 3200);
-                return () => { unsubscribe(); clearTimeout(timer); };
+                init();
             }, []);
 
-            useEffect(() => {
-                if (user) fetchData(sheetUrl);
-            }, [user]);
+            if (isBooting) return <LoadingScreen isDark={isDark} />;
 
-            // Data Organisasi (9 Bahagian)
-            const orgData = [
-                { id: "adm", title: "Administration", icon: "clipboard-check", columns: [{ title: "LEADER", members: [{n: "Deni Kristanto", r: "GENERAL SPV PROSES"}, {n: "Agung Budi S", r: "GENERAL SPV PACKAGING"}] }, { title: "ADMINISTRATION", members: [{n: "Ari Anjasmara", r: "ADMIN DOWNTIME PROSES"}, {n: "Fawwaz Hafiyulloh", r: "ADMIN PENGADAAN SPAREPART"}] }] },
-                { id: "ele", title: "Electrical Engineer", icon: "zap", columns: [{ title: "LEADER", members: [{n: "Erik Rian Arifin", r: "PIC ELECTRIC"}, {n: "Deni Kristanto", r: "GENERAL SPV PROSES"}] }, { title: "TEAM ELEKTRIKAL", members: [{n: "Mohammad Rohmatulloh Ramadhan", r: "ELECTRICAL PLC"}, {n: "Muhammad Afrizal", r: "GENERAL ELECTRICAL"}, {n: "Desta Wahyu Riski", r: "GENERAL ELECTRICAL"}] }] },
-                { id: "wsall", title: "Wafer Stick All Plant", icon: "bar-chart-3", columns: [{ title: "LEADER", members: [{n: "Baidillah", r: "PIC WAFER STICK ALL"}, {n: "Deni Kristanto", r: "GENERAL SPV PROSES"}] }, { title: "MAINTENANCE NON-SHIFT", members: [{n: "Tursiman", r: "MAINTENANCE"}, {n: "Ari Wiyoko", r: "MAINTENANCE"}, {n: "Yuslim", r: "MAINTENANCE"}] }, { title: "PROSES SHIFT A/B/C", members: [{n: "Andika Pratama", r: "PROSES MI A"}, {n: "Rahmatul Dafa", r: "PROSES GF A"}, {n: "Wawan Teguh", r: "PROSES MI B"}, {n: "Wildan Lukianto", r: "PROSES GF B"}, {n: "Subandi", r: "PROSES MI C"}, {n: "Imron", r: "PROSES GF C"}] }] },
-                { id: "wgf", title: "Wafer GF & Plant 3", icon: "layers", columns: [{ title: "LEADER", members: [{n: "Poniman", r: "SPV WAFER GF & PLANT 3"}] }, { title: "MAINTENANCE NON-SHIFT", members: [{n: "Sandy Edi Syah", r: "PIC MAINTENANCE PROSES PLANT 3"}, {n: "Muhammad Fani Asror", r: "MAINTENANCE PROSES GF"}, {n: "Agil Revan", r: "MAINTENANCE PROSES PLANT 3"}] }, { title: "PROSES SHIFT A/B/C", members: [{n: "Arya Nugik", r: "PROSES GF A"}, {n: "Johan", r: "PROSES GF B"}, {n: "Eko Pratomo", r: "PROSES GF C"}, {n: "Muhammad Fahmi Hidayat", r: "PROSES PLANT 3 A"}, {n: "Bagus Adi", r: "PROSES PLANT 3 B"}, {n: "Rafli Iwan Purwanto", r: "PROSES PLANT 3 C"}] }] },
-                { id: "wupa", title: "Wafer UPA", icon: "cpu", columns: [{ title: "LEADER", members: [{n: "M. Purwadi", r: "SPV WAFER UPA"}] }, { title: "MAINTENANCE NON-SHIFT", members: [{n: "Muhammad Anang", r: "PIC MAINTENANCE PROSES UPA"}, {n: "Dadang", r: "MAINTENANCE PROSES UPA"}] }, { title: "PROSES SHIFT A/B/C", members: [{n: "Hengki Saputro", r: "PROSES UPA A"}, {n: "Bayu Candra Prasetyono", r: "PROSES UPA B"}, {n: "Dandi", r: "PROSES UPA C"}] }] },
-                { id: "pkg", title: "Maintenance Packaging", icon: "package", columns: [{ title: "LEADER", members: [{n: "Agung Budi Setiawan", r: "GENERAL SPV PACKAGING"}] }, { title: "MAINTENANCE NON-SHIFT", members: [{n: "Moh Jaini", r: "PIC MAINTENACE MAYORA"}, {n: "Sutik", r: "PIC MAINTENANCE GF (HORIZONTAL & VERTIKAL)"}, {n: "M. Fazal Ashari", r: "PIC MAINTENANCE NABATI SNACK & KAWASHIMA"}, {n: "Ryan", r: "MAINTENANCE NABATI ROLLS & PLANT 3"}] }, { title: "TEKNIK SHIFT MAYORA", members: [{n: "Bagus Setiawan", r: "MAYORA SHIFT A"}, {n: "Feri", r: "MAYORA SHIFT A"}, {n: "Soni Prasetia", r: "MAYORA SHIFT B"}, {n: "Ahmad Rofik", r: "MAYORA SHIFT B"}, {n: "Muhammad Adi Novid", r: "MAYORA SHIFT C"}, {n: "Nur Maarif", r: "MAYORA SHIFT C"}] }, { title: "TEKNIK SHIFT GF", members: [{n: "Ahmad Khoirudin", r: "GF SHIFT A"}, {n: "Adit Prasetyo", r: "GF SHIFT B"}, {n: "Lucky Lukman", r: "GF SHIFT C"}] }, { title: "TEKNIK SHIFT PLANT 3", members: [{n: "Ilyas Saiful Aziz", r: "PLANT 3 SHIFT A"}, {n: "Fiki Mahda", r: "PLANT 3 SHIFT B"}, {n: "Ahmad Sobirin", r: "PLANT 3 SHIFT C"}] }, { title: "TEKNIK SHIFT NABATI ROLLS", members: [{n: "Ahmad Dzikri", r: "NABATI ROLLS SHIFT A"}, {n: "Muhammad Nizar Royyan", r: "NABATI ROLLS SHIFT B"}, {n: "M. Iqbaludin", r: "NABATI ROLLS SHIFT C"}] }, { title: "TEKNIK SHIFT UPA", members: [{n: "Alan", r: "UPA SHIFT A"}, {n: "Bagus Prasetyo Ramadhan", r: "UPA SHIFT B"}, {n: "M. Rendi", r: "UPA SHIFT C"}] }] },
-                { id: "uti", title: "Utility", icon: "wrench", columns: [{ title: "LEADER", members: [{n: "M. Surip", r: "PIC OF UTILITY"}, {n: "Deni Kristanto", r: "GENERAL SPV PROSES"}] }, { title: "MAINTENANCE NON-SHIFT", members: [{n: "Arik Supriyanto", r: "MAINTENANCE UTILITY"}, {n: "Arif Prasetyo", r: "MAINTENANCE PROSES"}] }, { title: "TEKNIK SHIFT A/B/C", members: [{n: "Mokhamad Aris", r: "TEKNIK UTILITY SHIFT A"}, {n: "Muktasim Billillah", r: "TEKNIK UTILITY SHIFT B"}, {n: "Andi Firdani Yahya", r: "TEKNIK UTILITY SHIFT C"}] }] },
-                { id: "nbt", title: "Nabati Extrude", icon: "sprout", columns: [{ title: "LEADER", members: [{n: "Deni Kristanto", r: "GENERAL SPV PROSES"}, {n: "Basuki Setyo Utomo", r: "MAINTENANCE NON-SHIFT"}] }, { title: "TEKNIK SHIFT A/B/C", members: [{n: "Fiki Muhammad Subur", r: "TEKNIK SHIFT A"}, {n: "Farid", r: "TEKNIK SHIFT B"}, {n: "Dwi Okta", r: "TEKNIK SHIFT C"}] }] },
-                { id: "wsh", title: "Workshop", icon: "hammer", columns: [{ title: "LEADER", members: [{n: "Jamil", r: "PIC WORKSHOP"}, {n: "Deni Kristanto", r: "GENERAL SPV PROSES"}] }, { title: "TEAM WORKSHOP", members: [{n: "Agung setiawan", r: "WORKSHOP"}, {n: "Rizky Nur S", r: "WORKSHOP"}] }] }
-            ];
-
-            const requestFlow = [
-                { id: 1, title: "Pencatatan Awal", desc: "User menulis permintaan di LOG BOOK RCP" },
-                { id: 2, title: "Entri Data", desc: "Admin menginput data ke SISTEM ODOO" },
-                { id: 3, title: "Verifikasi RCP", desc: "RCP disetujui (Approved) oleh Pak Deni" },
-                { id: 4, title: "Penyusunan PR", desc: "Purchase Request dibuat oleh Admin GSP" },
-                { id: 5, title: "Otorisasi PR", desc: "PR disetujui (Approved) oleh Pak Agus" },
-                { id: 8, title: "Pemesanan", desc: "Purchasing menerbitkan RO (Receipt Order)" },
-                { id: 7, title: "Penerimaan", desc: "Barang datang di gudang sparepart" },
-                { id: 9, title: "Penyerahan", desc: "Serah terima barang ke user oleh Admin GSP" }
-            ];
-
-            // ==========================================
-            // 5. VIEW RENDERING
-            // ==========================================
-            if (isBooting) return <LoadingScreen />;
-
-            if (currentPage === 'dashboard') {
-                return (
-                    <div className="min-h-screen flex flex-col fade-in relative overflow-hidden">
-                        {/* ANIMATED GEAR BACKGROUND */}
-                        <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.05]">
-                            <Icon name="settings" size={600} className="absolute -top-40 -left-40 text-blue-500 gear-spin-slow" />
-                            <Icon name="settings" size={400} className="absolute bottom-20 -right-20 text-sky-500 gear-spin-reverse" />
-                            <Icon name="settings" size={250} className="absolute top-1/2 right-1/4 text-cyan-500 gear-spin" />
-                        </div>
-
-                        <header className="bg-slate-900/80 border-b border-slate-800 text-white p-8 shadow-2xl relative overflow-hidden z-10 backdrop-blur-md">
-                            <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-sky-900/20 to-transparent"></div>
-                            <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center relative z-10 gap-6">
-                                <div className="flex items-center gap-6 animate-entrance">
-                                    <div className="bg-sky-500/20 p-5 rounded-2xl shadow-2xl border border-sky-500/30 flex items-center justify-center hover:scale-105 transition-transform duration-500">
-                                        <Icon name="wrench" size={48} className="text-sky-400" />
-                                    </div>
-                                    <div>
-                                        <h1 className="font-black text-3xl md:text-5xl uppercase italic text-white drop-shadow-md leading-none">SISTEM INFORMASI</h1>
-                                        <p className="text-sky-300 text-lg md:text-xl font-bold uppercase tracking-[0.2em] mt-2 border-l-4 border-sky-400 pl-4">DEPARTEMEN TEKNIK SKF</p>
-                                    </div>
-                                </div>
-                                <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/50 backdrop-blur-md animate-entrance delay-200">
-                                    <div className="flex items-center gap-2 text-sky-400 font-black text-sm uppercase tracking-wider"><div className="w-2.5 h-2.5 bg-sky-400 rounded-full animate-pulse shadow-[0_0_10px_#38bdf8]"></div>PROFESIONAL & BERINTEGRITAS</div>
-                                </div>
-                            </div>
-                        </header>
-                        <main className="max-w-[1400px] mx-auto p-10 flex-1 w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
-                            <MenuCard icon="clipboard-list" title="Riwayat Permintaan" desc="Pemantauan riwayat permintaan pengadaan sparepart." onClick={() => setCurrentPage('history')} color="bg-sky-600" className="animate-entrance delay-100" />
-                            <MenuCard icon="users" title="Struktur Jabatan" desc="Pembagian tugas dan tanggung jawab personil departemen." onClick={() => setCurrentPage('structure')} color="bg-indigo-600" className="animate-entrance delay-200" />
-                            <MenuCard icon="book-open" title="Panduan" desc="Pusat panduan tim teknik, K3, dan GMP SKF." onClick={() => setCurrentPage('guides')} color="bg-emerald-600" className="animate-entrance delay-300" />
-                            <MenuCard 
-                                icon="library" 
-                                title="Manual Book" 
-                                desc="Akses direktori manual book mesin dan peralatan." 
-                                onClick={() => window.open("https://drive.google.com/drive/folders/1uJyhaFhVX9hED5jiOIzdKc-8plEg0Z1_?usp=drive_link", "_blank")} 
-                                color="bg-amber-600" 
-                                className="animate-entrance delay-400" 
-                            />
-                        </main>
-                        <footer className="p-10 border-t border-slate-800 flex justify-between items-center text-slate-500 animate-entrance delay-500 z-10">
-                            <div className="flex items-center gap-3"><Icon name="wrench" size={20} className="text-sky-500"/><p className="text-[10px] font-black uppercase tracking-widest">SKF Engineering Departement</p></div>
-                            <p className="text-[10px] font-black uppercase tracking-widest">&copy; 2026 DEPT TEKNIK SKF</p>
-                        </footer>
-                    </div>
-                );
-            }
-
-            if (currentPage === 'guides') {
-                return (
-                    <div className="min-h-screen bg-[#020617] flex flex-col fade-in pb-20">
-                        <header className="bg-slate-900/90 border-b border-slate-800 text-white p-6 sticky top-0 z-20 shadow-xl flex justify-between items-center backdrop-blur-lg">
-                            <div className="flex items-center gap-4">
-                                <button onClick={() => setCurrentPage('dashboard')} className="bg-slate-800 hover:bg-sky-600 p-2.5 rounded-xl transition-all font-bold text-xs uppercase flex items-center gap-2 active:scale-95 border border-slate-700 text-white">
-                                    <Icon name="chevron-left" /> KEMBALI
-                                </button>
-                                <h1 className="font-extrabold text-lg uppercase tracking-tight text-white">Pusat Panduan Teknik</h1>
-                            </div>
-                        </header>
-                        <main className="max-w-[1400px] mx-auto p-10 flex flex-col gap-10">
-                             <div className="text-center animate-entrance">
-                                <h2 className="text-4xl font-black text-sky-400 uppercase tracking-tighter italic drop-shadow-[0_0_15px_rgba(56,189,248,0.3)]">DOKUMENTASI & STANDAR KERJA</h2>
-                                <p className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-[0.4em]">CV SURYA KENCANA FOOD</p>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <GuideSelectCard icon="repeat" title="Alur Permintaan Barang" onClick={() => setCurrentPage('guide-request-flow')} />
-                                <GuideSelectCard icon="shield-alert" title="Panduan K3 Umum & Listrik" onClick={() => setCurrentPage('guide-k3')} />
-                                <GuideSelectCard icon="check-square" title="GMP 5R Lingkungan Pabrik" onClick={() => setCurrentPage('guide-gmp')} />
-                            </div>
-                        </main>
-                    </div>
-                );
-            }
-
-            if (currentPage === 'guide-request-flow') {
-                return (
-                    <div className="min-h-screen bg-[#020617] flex flex-col fade-in pb-20">
-                        <header className="bg-slate-900/90 border-b border-slate-800 text-white p-6 sticky top-0 z-20 shadow-xl flex justify-between items-center backdrop-blur-lg">
-                            <button onClick={() => setCurrentPage('guides')} className="bg-slate-800 hover:bg-sky-600 p-2.5 rounded-xl transition-all font-bold text-xs uppercase flex items-center gap-2 border border-slate-700 text-white">
-                                <Icon name="chevron-left" /> KEMBALI
-                            </button>
-                            <h1 className="font-extrabold text-lg uppercase tracking-tight text-white">Alur Permintaan Barang</h1>
-                        </header>
-                        <main className="max-w-[1200px] mx-auto p-10">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                {requestFlow.map((step, idx) => (
-                                    <div key={step.id} className="glass-card p-6 rounded-3xl flex items-center gap-6 animate-entrance" style={{animationDelay: `${idx * 100}ms`}}>
-                                        <div className="step-pill">{step.id}</div>
-                                        <div>
-                                            <h3 className="font-black text-sky-400 uppercase text-sm mb-1">{step.title}</h3>
-                                            <p className="text-slate-300 text-xs font-medium leading-relaxed">{step.desc}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </main>
-                    </div>
-                );
-            }
-
-            if (currentPage === 'guide-k3') {
-                return (
-                    <div className="min-h-screen bg-[#020617] flex flex-col fade-in pb-20">
-                        <header className="bg-slate-900/90 border-b border-slate-800 text-white p-6 sticky top-0 z-20 shadow-xl flex justify-between items-center backdrop-blur-lg">
-                            <button onClick={() => setCurrentPage('guides')} className="bg-slate-800 hover:bg-sky-600 p-2.5 rounded-xl transition-all font-bold text-xs uppercase flex items-center gap-2 border border-slate-700 text-white">
-                                <Icon name="chevron-left" /> KEMBALI
-                            </button>
-                            <h1 className="font-extrabold text-lg uppercase tracking-tight text-white">Panduan K3 Teknik</h1>
-                        </header>
-                        <main className="max-w-[1200px] mx-auto p-10 space-y-12">
-                            <section className="animate-entrance">
-                                <h2 className="text-2xl font-black text-sky-400 mb-6 flex items-center gap-3">
-                                    <Icon name="shield" size={28} /> K3 UMUM
-                                </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-300 text-xs font-bold uppercase leading-loose">
-                                    <div className="glass-card p-5 rounded-2xl flex items-center gap-4"><Icon name="check-circle" className="text-emerald-500" /> Wajib Menggunakan APD Lengkap (Sepatu Safety, Helm, Masker)</div>
-                                    <div className="glass-card p-5 rounded-2xl flex items-center gap-4"><Icon name="check-circle" className="text-emerald-500" /> Patuhi Rambu Peringatan & Jalur Hijau</div>
-                                    <div className="glass-card p-5 rounded-2xl flex items-center gap-4"><Icon name="check-circle" className="text-emerald-500" /> Pastikan Kondisi Fisik Fit Sebelum Bekerja</div>
-                                    <div className="glass-card p-5 rounded-2xl flex items-center gap-4"><Icon name="check-circle" className="text-emerald-500" /> Laporkan Segera Kondisi Tidak Aman (Unsafe Condition)</div>
-                                </div>
-                            </section>
-                            <section className="animate-entrance delay-200">
-                                <h2 className="text-2xl font-black text-amber-400 mb-6 flex items-center gap-3">
-                                    <Icon name="zap" size={28} /> K3 LISTRIK
-                                </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-300 text-xs font-bold uppercase leading-loose">
-                                    <div className="glass-card p-5 rounded-2xl flex items-center gap-4 border-amber-900/30"><Icon name="alert-triangle" className="text-amber-500" /> Gunakan Alat Kerja Berisolasi Standar</div>
-                                    <div className="glass-card p-5 rounded-2xl flex items-center gap-4 border-amber-900/30"><Icon name="alert-triangle" className="text-amber-500" /> Prosedur LOTO (Lock Out Tag Out) Wajib Dilakukan</div>
-                                    <div className="glass-card p-5 rounded-2xl flex items-center gap-4 border-amber-900/30"><Icon name="alert-triangle" className="text-amber-500" /> Jangan Bekerja pada Sirkuit Bertegangan Sendirian</div>
-                                    <div className="glass-card p-5 rounded-2xl flex items-center gap-4 border-amber-900/30"><Icon name="alert-triangle" className="text-amber-500" /> Periksa Grounding Panel Secara Berkala</div>
-                                </div>
-                            </section>
-                        </main>
-                    </div>
-                );
-            }
-
-            if (currentPage === 'guide-gmp') {
-                return (
-                    <div className="min-h-screen bg-[#020617] flex flex-col fade-in pb-20">
-                        <header className="bg-slate-900/90 border-b border-slate-800 text-white p-6 sticky top-0 z-20 shadow-xl flex justify-between items-center backdrop-blur-lg">
-                            <button onClick={() => setCurrentPage('guides')} className="bg-slate-800 hover:bg-sky-600 p-2.5 rounded-xl transition-all font-bold text-xs uppercase flex items-center gap-2 border border-slate-700 text-white">
-                                <Icon name="chevron-left" /> KEMBALI
-                            </button>
-                            <h1 className="font-extrabold text-lg uppercase tracking-tight text-white">GMP & 5R CV. SKF</h1>
-                        </header>
-                        <main className="max-w-[1200px] mx-auto p-10">
-                             <div className="grid grid-cols-1 gap-6">
-                                <div className="glass-card p-8 rounded-3xl border-sky-900/30">
-                                    <h2 className="text-xl font-black text-sky-400 mb-8 uppercase tracking-widest">PRINSIP 5R (Standard Gred Makanan)</h2>
-                                    <div className="space-y-6">
-                                        <GmpItem title="RINGKAS (SEIRI)" desc="Singkirkan barang yang tidak diperlukan dari area perbaikan mesin." />
-                                        <GmpItem title="RAPI (SEITON)" desc="Simpan peralatan teknik pada tempatnya (Toolbox/Shadow Board)." />
-                                        <GmpItem title="RESIK (SEISO)" desc="Bersihkan ceceran oli atau serpihan logam segera setelah pengerjaan." />
-                                        <GmpItem title="RAWAT (SEIKETSU)" desc="Pertahankan standar kebersihan area kerja secara berkelanjutan." />
-                                        <GmpItem title="RAJIN (SHITSUKE)" desc="Jadikan 4R di atas sebagai budaya kerja harian di CV. SKF." />
-                                    </div>
-                                </div>
-                                <div className="glass-card p-8 rounded-3xl border-emerald-900/30">
-                                    <h2 className="text-xl font-black text-emerald-400 mb-4 uppercase tracking-widest italic text-center">Peringatan Keselamatan Makanan</h2>
-                                    <p className="text-xs text-slate-400 leading-loose uppercase font-bold text-center">Teknisi wajib mencuci tangan sebelum masuk area proses dan memastikan tidak ada benda asing (mur/baut) tertinggal di dalam mesin setelah MAINTENANCE.</p>
-                                </div>
-                             </div>
-                        </main>
-                    </div>
-                );
-            }
-
-            if (currentPage === 'structure') {
-                return (
-                    <div className="min-h-screen bg-[#020617] flex flex-col fade-in pb-20">
-                        <header className="bg-slate-900/90 border-b border-slate-800 text-white p-6 sticky top-0 z-20 shadow-xl flex justify-between items-center backdrop-blur-lg">
-                            <div className="flex items-center gap-4">
-                                <button onClick={() => setCurrentPage('dashboard')} className="bg-slate-800 hover:bg-sky-600 p-2.5 rounded-xl transition-all font-bold text-xs uppercase flex items-center gap-2 active:scale-95 border border-slate-700 text-white">
-                                    <Icon name="chevron-left" /> KEMBALI
-                                </button>
-                                <h1 className="font-extrabold text-lg uppercase tracking-tight text-sky-400">Struktur Jabatan Teknik</h1>
-                            </div>
-                        </header>
-                        <main className="max-w-[1400px] mx-auto p-10 flex flex-col gap-10">
-                            <div className="text-center animate-entrance"><h2 className="text-4xl font-black text-sky-400 uppercase tracking-tighter italic drop-shadow-[0_0_15px_rgba(56,189,248,0.3)]">STRUKTUR JABATAN DEPARTEMEN TEKNIK</h2><p className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-[0.4em]">CV SURYA KENCANA FOOD</p></div>
-                            <div className="flex flex-col gap-6">
-                                {orgData.map((section, idx) => (
-                                    <div key={section.id} className="org-container animate-entrance border-slate-800" style={{animationDelay: `${idx * 100}ms`}}>
-                                        <div className="org-header" onClick={() => setOpenAccordion(openAccordion === section.id ? null : section.id)}>
-                                            <div className="flex items-center gap-6"><div className="bg-sky-500 text-slate-950 p-3 rounded-xl shadow-[0_0_15px_rgba(56,189,248,0.4)] transition-transform"><Icon name={section.icon} size={28} /></div><h3 className="org-section-title">{section.title}</h3></div>
-                                            <Icon name="chevron-down" className={`text-sky-400 transition-all duration-300 ${openAccordion === section.id ? 'rotate-180' : ''}`} size={32} />
-                                        </div>
-                                        <div className={`org-content ${openAccordion === section.id ? 'active' : ''}`}>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 pt-4">
-                                                {section.columns.map((col, cIdx) => (
-                                                    <div key={cIdx} className="flex flex-col"><h4 className="org-subsection-title">{col.title}</h4>
-                                                        <div className="space-y-3">{col.members.map((mem, mIdx) => (
-                                                            <div key={mIdx} className="org-card-item group">
-                                                                <div className="avatar-circle group-hover:bg-sky-400 group-hover:text-slate-950 transition-colors">{mem.n.charAt(0)}</div>
-                                                                <div className="flex flex-col"><span className="text-sm font-black text-white uppercase group-hover:text-sky-400 transition-colors">{mem.n}</span><span className="text-[9px] font-bold text-sky-600 uppercase tracking-widest leading-tight">{mem.r}</span></div>
-                                                            </div>
-                                                        ))}</div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </main>
-                    </div>
-                );
-            }
-
-            // HALAMAN: SEJARAH
             return (
-                <div className="min-h-screen pb-20 fade-in bg-[#020617]">
-                    <header className="bg-slate-900/90 border-b border-slate-800 text-white p-6 sticky top-0 z-20 shadow-xl flex justify-between items-center backdrop-blur-lg">
-                        <div className="flex items-center gap-4">
-                            <button onClick={() => setCurrentPage('dashboard')} className="bg-slate-800 hover:bg-sky-600 p-2.5 rounded-xl transition-all font-bold text-xs uppercase flex items-center gap-2 active:scale-95 border border-slate-700 text-white">
-                                <Icon name="chevron-left" /> KEMBALI
-                            </button>
-                            <h1 className="font-extrabold text-lg uppercase tracking-tight text-white leading-none">Riwayat Permintaan</h1>
-                        </div>
-                        <div className="flex gap-3">
-                            <button onClick={() => setIsConfigOpen(!isConfigOpen)} className="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 text-white transition-all active:scale-95 shadow-lg">
-                                <Icon name="settings" size={20} />
-                            </button>
-                            <button onClick={() => fetchData(sheetUrl)} disabled={loading} className="bg-sky-500 hover:bg-sky-400 text-slate-950 px-6 py-3 rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg active:scale-95 disabled:opacity-50">
-                                <Icon name="refresh-cw" size={18} spin={loading} /> {loading ? 'MEMUAT...' : 'SYNC SHEET'}
-                            </button>
+                <div className={`min-h-screen transition-colors duration-500 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                    <header className={`border-b p-6 shadow-2xl relative overflow-hidden z-20 backdrop-blur-md sticky top-0 ${isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
+                        <div className="max-w-[1600px] mx-auto flex items-center justify-between">
+                            <div className="flex items-center gap-6 animate-entrance">
+                                <button onClick={() => setCurrentPage('dashboard')} className={`p-4 rounded-2xl shadow-xl border flex items-center justify-center hover:scale-105 transition-transform ${isDark ? 'bg-sky-500/20 border-sky-500/30 text-sky-400' : 'bg-blue-600/10 border-blue-600/20 text-blue-600'}`}>
+                                    <Icon name="wrench" size={36} />
+                                </button>
+                                <div>
+                                    <h1 className={`font-black text-xl md:text-3xl uppercase italic leading-none ${isDark ? 'text-white' : 'text-blue-900'}`}>SISTEM INFORMASI</h1>
+                                    <p className={`text-xs md:text-sm font-bold uppercase tracking-[0.2em] mt-1 border-l-4 pl-3 ${isDark ? 'text-sky-300 border-sky-400' : 'text-blue-600 border-blue-700'}`}>DEPARTEMEN TEKNIK SKF</p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                                <button 
+                                    onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                                    className={`p-3 rounded-xl border transition-all active:scale-95 shadow-lg flex items-center gap-2 ${isDark ? 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-blue-900 hover:bg-slate-200'}`}
+                                >
+                                    <Icon name={isDark ? "sun" : "moon"} size={20} />
+                                    <span className="hidden md:block text-[10px] font-black uppercase tracking-widest">{isDark ? 'Light' : 'Dark'}</span>
+                                </button>
+                                
+                                <div className={`p-3 rounded-xl border hidden sm:flex items-center gap-3 ${isDark ? 'bg-slate-800/80 border-slate-700 text-sky-400' : 'bg-blue-50 border-blue-100 text-blue-800'}`}>
+                                    <div className={`w-2.5 h-2.5 rounded-full animate-pulse ${isDark ? 'bg-sky-400 shadow-[0_0_10px_#38bdf8]' : 'bg-blue-600'}`}></div>
+                                    <span className="text-[10px] font-black uppercase tracking-wider">PROFESIONAL & BERINTEGRITAS</span>
+                                </div>
+                            </div>
                         </div>
                     </header>
-                    <main className="max-w-[1600px] mx-auto p-6 space-y-8">
-                        {isConfigOpen && (
-                            <div className="glass-card p-8 rounded-[2.5rem] shadow-2xl animate-entrance">
-                                <h2 className="text-xl font-black mb-4 flex items-center gap-3 text-sky-400 uppercase tracking-tight"><Icon name="database" className="text-sky-500" /> Sambungan Pangkalan Data</h2>
-                                <div className="flex flex-col md:flex-row gap-4">
-                                    <input type="text" placeholder="URL CSV Google Sheet..." className="flex-1 p-4 bg-slate-900/50 border-2 border-slate-700 rounded-2xl outline-none focus:ring-4 focus:ring-sky-500/20 font-bold text-white" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} />
-                                    <button onClick={() => { handleConnect(); setIsConfigOpen(false); }} disabled={loading || !sheetUrl} className="bg-sky-500 text-slate-950 px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-white transition-all shadow-xl active:scale-95 text-xs">SIMPAN PAUTAN</button>
+
+                    <main className="max-w-[1600px] mx-auto p-6 md:p-10 relative z-10">
+                        {currentPage === 'dashboard' ? (
+                            <div className="space-y-10">
+                                <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.05]">
+                                    <Icon name="settings" size={600} className={`absolute -top-40 -left-40 gear-spin-slow ${isDark ? 'text-blue-500' : 'text-blue-900'}`} />
+                                    <Icon name="settings" size={400} className={`absolute bottom-20 -right-20 gear-spin-reverse ${isDark ? 'text-sky-500' : 'text-sky-800'}`} />
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    <MenuCard isDark={isDark} icon="clipboard-list" title="Riwayat Permintaan" desc="Monitoring status pengadaan sparepart." onClick={() => setCurrentPage('history')} color="bg-sky-600" className="animate-entrance delay-100" />
+                                    <MenuCard isDark={isDark} icon="users" title="Struktur Jabatan" desc="Hierarki dan pembagian tugas personil." onClick={() => setCurrentPage('structure')} color="bg-indigo-600" className="animate-entrance delay-200" />
+                                    <MenuCard isDark={isDark} icon="book-open" title="Panduan" desc="Pusat instruksi tim teknik, K3, & GMP." onClick={() => setCurrentPage('guides')} color="bg-emerald-600" className="animate-entrance delay-300" />
+                                    <MenuCard isDark={isDark} icon="library" title="Manual Book" desc="Akses direktori manual book peralatan." onClick={() => window.open("https://drive.google.com/drive/folders/1uJyhaFhVX9hED5jiOIzdKc-8plEg0Z1_?usp=drive_link", "_blank")} color="bg-amber-600" className="animate-entrance delay-400" />
                                 </div>
                             </div>
-                        )}
-                        
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-                            <StatCard label="DONE" count={rcpStats.DONE} color="emerald" icon="check-circle" className="animate-entrance delay-100" />
-                            <StatCard label="APPROVED" count={rcpStats.APPROVED} color="amber" icon="shield-check" className="animate-entrance delay-200" />
-                            <StatCard label="CONFIRMED" count={rcpStats.CONFIRMED} color="slate" icon="clock" className="animate-entrance delay-300" />
-                            <StatCard label="CANCELED" count={rcpStats.CANCELED} color="red" icon="x-circle" className="animate-entrance delay-400" />
-                        </div>
-
-                        <div className="glass-card p-8 rounded-[2.5rem] shadow-sm animate-entrance delay-500">
-                            <div className="flex items-center gap-2 mb-6"><Icon name="bar-chart-big" className="text-sky-400" /><h2 className="text-xs font-black text-slate-300 uppercase tracking-widest text-center">Visualisasi Perbandingan Status RCP</h2></div>
-                            <div className="h-[300px] w-full relative"><canvas ref={chartRef}></canvas></div>
-                        </div>
-
-                        <div className="glass-card p-8 rounded-[2.5rem] shadow-sm space-y-6 fade-in">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <SearchInput icon="user" placeholder="Requested By..." value={searchUser} onChange={setSearchUser} />
-                                <SearchInput icon="package-search" placeholder="Product / Sparepart..." value={searchProduct} onChange={setSearchProduct} />
-                                <SearchInput icon="cpu" placeholder="Machine Line..." value={searchMachine} onChange={setSearchMachine} />
-                            </div>
-                            <div className="flex flex-wrap gap-4 items-center pt-2">
-                                <select className="bg-slate-900/50 border border-slate-700 p-3.5 rounded-2xl font-black text-[11px] w-full md:w-48 uppercase text-slate-300 hover:border-sky-400 transition-colors" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="Semua">FILTER: STATUS</option><option value="DONE">DONE</option><option value="APPROVED">APPROVED</option><option value="CONFIRMED">CONFIRMED</option><option value="CANCELED">CANCELED</option></select>
-                                <select className="bg-slate-900/50 border border-slate-700 p-3.5 rounded-2xl font-black text-[11px] w-full md:w-40 uppercase text-slate-300 hover:border-sky-400 transition-colors" value={monthFilter} onChange={e => setMonthFilter(e.target.value)}><option value="Semua">FILTER: BULAN</option>{listMonths.map(m => <option key={m.val} value={m.val}>{m.name.toUpperCase()}</option>)}</select>
-                                <select className="bg-slate-900/50 border border-slate-700 p-3.5 rounded-2xl font-black text-[11px] w-full md:w-32 uppercase text-slate-300 hover:border-sky-400 transition-colors" value={yearFilter} onChange={e => setYearFilter(e.target.value)}><option value="Semua">FILTER: TAHUN</option>{availableYears.map(y => <option key={y} value={y}>{y}</option>)}</select>
-                                <button onClick={() => window.print()} className="ml-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3.5 rounded-2xl font-black text-[11px] flex items-center gap-3 shadow-lg active:scale-95 uppercase tracking-wider"><Icon name="share-2" size={18} /> Cetak Laporan</button>
-                            </div>
-                            <div className="overflow-x-auto rounded-[1.5rem] border border-slate-800 custom-scrollbar">
-                                <table className="w-full text-left">
-                                    <thead className="bg-slate-900/80 border-b border-slate-800">
-                                        <tr>
-                                            <th className="px-6 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-xs">Date</th>
-                                            <th className="px-6 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-xs">Requested By</th>
-                                            <th className="px-6 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-xs">RCP ID</th>
-                                            <th className="px-6 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center text-xs">Status</th>
-                                            <th className="px-6 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-xs">Product / Sparepart</th>
-                                            <th className="px-6 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center text-xs">Qty</th>
-                                            <th className="px-6 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-xs">Machine Line</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-800/50">
-                                        {filteredData.length === 0 ? (<tr><td colSpan="7" className="p-20 text-center opacity-30 uppercase font-black tracking-widest text-xs text-slate-500">Data Tidak Ditemukan</td></tr>) : (
-                                            filteredData.map((item, i) => (
-                                                <tr key={i} className="hover:bg-slate-800/30 transition-all duration-300">
-                                                    <td className="px-6 py-5 whitespace-nowrap text-[10px] font-bold text-slate-500">{item.date || '-'}</td>
-                                                    <td className="px-6 py-5 whitespace-nowrap text-xs font-black text-slate-200 uppercase">{item.requestedBy || '-'}</td>
-                                                    <td className="px-6 py-5 whitespace-nowrap"><span className="text-[10px] font-black text-sky-400 bg-sky-950/40 px-3 py-1.5 rounded-lg border border-sky-900/50">{item.rcpId || '-'}</span></td>
-                                                    <td className="px-6 py-5 whitespace-nowrap text-center"><span className={`inline-block min-w-[90px] px-3 py-2 rounded-xl text-[9px] font-black uppercase border shadow-sm ${getStatusStyle(item.status)}`}>{item.status || 'N/A'}</span></td>
-                                                    <td className="px-6 py-5 text-sm font-black text-slate-200 uppercase leading-tight">{item.product || 'N/A'}</td>
-                                                    <td className="px-6 py-5 whitespace-nowrap text-xs font-black text-center text-sky-400">{item.qty || '0'}</td>
-                                                    <td className="px-6 py-5 whitespace-nowrap text-[10px] font-black text-slate-500 italic opacity-80">{item.machine || 'UMUM'}</td>
+                        ) : currentPage === 'history' ? (
+                            <div className="space-y-8 fade-in">
+                                <div className="flex items-center justify-between gap-4">
+                                    <button onClick={() => setCurrentPage('dashboard')} className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white border hover:bg-slate-50 text-slate-700'}`}><Icon name="chevron-left" /> KEMBALI</button>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setIsConfigOpen(!isConfigOpen)} className={`p-2.5 rounded-xl border transition-all ${isDark ? 'bg-slate-800 border-slate-700 text-white hover:bg-slate-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}><Icon name="settings" size={20} /></button>
+                                        <button onClick={() => fetchDataInternal(sheetUrl)} disabled={loading} className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg active:scale-95 disabled:opacity-50 ${isDark ? 'bg-sky-500 text-slate-950' : 'bg-blue-700 text-white'}`}><Icon name="refresh-cw" size={18} spin={loading} /> {loading ? 'MEMUAT...' : 'SYNC SHEET'}</button>
+                                    </div>
+                                </div>
+                                {isConfigOpen && (
+                                    <div className={`p-8 rounded-[2.5rem] shadow-2xl animate-entrance ${isDark ? 'glass-card' : 'bg-white border border-slate-100'}`}>
+                                        <h2 className={`text-xl font-black mb-4 flex items-center gap-3 uppercase ${isDark ? 'text-sky-400' : 'text-blue-900'}`}><Icon name="database" /> Database Link</h2>
+                                        <div className="flex flex-col md:flex-row gap-4">
+                                            <input type="text" placeholder="URL CSV Google Sheet..." className={`flex-1 p-4 border-2 rounded-2xl outline-none focus:ring-4 font-bold ${isDark ? 'bg-slate-900/50 border-slate-700 text-white' : 'bg-slate-50 border-slate-100'}`} value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} />
+                                            <button onClick={() => { handleConnect(); setIsConfigOpen(false); }} className={`px-10 py-4 rounded-2xl font-black uppercase tracking-widest active:scale-95 ${isDark ? 'bg-sky-500 text-slate-950' : 'bg-blue-700 text-white'}`}>SIMPAN</button>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+                                    <StatCard isDark={isDark} label="DONE" count={rcpStats.DONE} color="emerald" icon="check-circle" className="animate-entrance delay-100" />
+                                    <StatCard isDark={isDark} label="APPROVED" count={rcpStats.APPROVED} color="amber" icon="shield-check" className="animate-entrance delay-200" />
+                                    <StatCard isDark={isDark} label="CONFIRMED" count={rcpStats.CONFIRMED} color="slate" icon="clock" className="animate-entrance delay-300" />
+                                    <StatCard isDark={isDark} label="CANCELED" count={rcpStats.CANCELED} color="red" icon="x-circle" className="animate-entrance delay-400" />
+                                </div>
+                                <div className={`p-8 rounded-[2.5rem] shadow-sm animate-entrance delay-500 ${isDark ? 'glass-card' : 'bg-white border'}`}>
+                                    <div className="flex items-center gap-2 mb-6 text-xs font-black uppercase opacity-70"><Icon name="bar-chart-big" /> Visualisasi Perbandingan Status RCP</div>
+                                    <div className="h-[300px] w-full relative"><canvas ref={chartRef}></canvas></div>
+                                </div>
+                                <div className={`p-8 rounded-[2.5rem] shadow-sm space-y-6 ${isDark ? 'glass-card' : 'bg-white border'}`}>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <SearchInput isDark={isDark} icon="user" placeholder="Requested By..." value={searchUser} onChange={setSearchUser} />
+                                        <SearchInput isDark={isDark} icon="package-search" placeholder="Product / Sparepart..." value={searchProduct} onChange={setSearchProduct} />
+                                        <SearchInput isDark={isDark} icon="cpu" placeholder="Machine Line..." value={searchMachine} onChange={setSearchMachine} />
+                                    </div>
+                                    <div className="flex flex-wrap gap-4 items-center pt-2">
+                                        <select className={`border p-3.5 rounded-2xl font-black text-[11px] w-full md:w-48 uppercase transition-colors ${isDark ? 'bg-slate-900/50 border-slate-700 text-slate-300 hover:border-sky-400' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-blue-400'}`} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="Semua">PENAPIS: STATUS</option><option value="DONE">DONE</option><option value="APPROVED">APPROVED</option><option value="CONFIRMED">CONFIRMED</option><option value="CANCELED">CANCELED</option></select>
+                                        <select className={`border p-3.5 rounded-2xl font-black text-[11px] w-full md:w-40 uppercase transition-colors ${isDark ? 'bg-slate-900/50 border-slate-700 text-slate-300 hover:border-sky-400' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-blue-400'}`} value={monthFilter} onChange={e => setMonthFilter(e.target.value)}><option value="Semua">PENAPIS: BULAN</option>{listMonths.map(m => <option key={m.val} value={m.val}>{m.name.toUpperCase()}</option>)}</select>
+                                        <select className={`border p-3.5 rounded-2xl font-black text-[11px] w-full md:w-32 uppercase transition-colors ${isDark ? 'bg-slate-900/50 border-slate-700 text-slate-300 hover:border-sky-400' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-blue-400'}`} value={yearFilter} onChange={e => setYearFilter(e.target.value)}><option value="Semua">PENAPIS: TAHUN</option>{availableYears.map(y => <option key={y} value={y}>{y}</option>)}</select>
+                                        <button onClick={() => window.print()} className={`ml-auto px-8 py-3.5 rounded-2xl font-black text-[11px] flex items-center gap-3 shadow-lg active:scale-95 uppercase tracking-wider text-white ${isDark ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-blue-700 hover:bg-blue-600'}`}><Icon name="share-2" size={18} /> Cetak Laporan</button>
+                                    </div>
+                                    <div className={`overflow-x-auto rounded-[1.5rem] border custom-scrollbar ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                        <table className="w-full text-left">
+                                            <thead className={`border-b ${isDark ? 'bg-slate-900/80 border-slate-800 text-slate-500' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                                                <tr>
+                                                    <th className="px-6 py-6 text-[10px] font-black uppercase text-xs">Date</th>
+                                                    <th className="px-6 py-6 text-[10px] font-black uppercase text-xs">Requested By</th>
+                                                    <th className="px-6 py-6 text-[10px] font-black uppercase text-xs">RCP ID</th>
+                                                    <th className="px-6 py-6 text-[10px] font-black uppercase text-center text-xs">Status</th>
+                                                    <th className="px-6 py-6 text-[10px] font-black uppercase text-xs">Product</th>
+                                                    <th className="px-6 py-6 text-[10px] font-black uppercase text-center text-xs">Qty</th>
+                                                    <th className="px-6 py-6 text-[10px] font-black uppercase text-xs">Machine Line</th>
                                                 </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
+                                            </thead>
+                                            <tbody className={`divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-50'}`}>
+                                                {filteredData.length === 0 ? (<tr><td colSpan="7" className="p-20 text-center opacity-30 uppercase font-black tracking-widest text-xs text-slate-500">Data Tidak Ditemukan</td></tr>) : (
+                                                    filteredData.map((item, i) => (
+                                                        <tr key={i} className={`transition-all duration-300 ${isDark ? 'hover:bg-slate-800/30' : 'hover:bg-blue-50/50'}`}>
+                                                            <td className="px-6 py-5 whitespace-nowrap text-[10px] font-bold opacity-60">{item.date || '-'}</td>
+                                                            <td className={`px-6 py-5 whitespace-nowrap text-xs font-black uppercase ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{item.requestedBy || '-'}</td>
+                                                            <td className="px-6 py-5 whitespace-nowrap"><span className={`text-[10px] font-black px-3 py-1.5 rounded-lg border ${isDark ? 'text-sky-400 bg-sky-950/40 border-sky-900/50' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>{item.rcpId || '-'}</span></td>
+                                                            <td className="px-6 py-5 whitespace-nowrap text-center"><span className={`inline-block min-w-[90px] px-3 py-2 rounded-xl text-[9px] font-black uppercase border shadow-sm ${getStatusStyle(item.status, isDark)}`}>{item.status || 'N/A'}</span></td>
+                                                            <td className={`px-6 py-5 text-sm font-black uppercase leading-tight ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{item.product || 'N/A'}</td>
+                                                            <td className={`px-6 py-5 whitespace-nowrap text-xs font-black text-center ${isDark ? 'text-sky-400' : 'text-blue-900'}`}>{item.qty || '0'}</td>
+                                                            <td className="px-6 py-5 whitespace-nowrap text-[10px] font-black text-slate-500 italic opacity-80">{item.machine || 'UMUM'}</td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        ) : currentPage === 'structure' ? (
+                            <div className="space-y-10 fade-in">
+                                <button onClick={() => setCurrentPage('dashboard')} className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white border hover:bg-slate-50 text-slate-700'}`}><Icon name="chevron-left" /> KEMBALI</button>
+                                <div className="text-center animate-entrance">
+                                    <h2 className={`text-4xl font-black uppercase tracking-tighter italic drop-shadow-[0_0_15px_rgba(56,189,248,0.3)] ${isDark ? 'text-sky-400' : 'text-blue-900'}`}>STRUKTUR JABATAN DEPARTEMEN TEKNIK</h2>
+                                    <p className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-[0.4em]">CV SURYA KENCANA FOOD</p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                    {orgData.map((section) => (
+                                        <OrganizationCard key={section.id} section={section} isDark={isDark} />
+                                    ))}
+                                </div>
+                            </div>
+                        ) : currentPage === 'guides' ? (
+                            <div className="space-y-10 fade-in">
+                                <button onClick={() => setCurrentPage('dashboard')} className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white border hover:bg-slate-50 text-slate-700'}`}><Icon name="chevron-left" /> KEMBALI</button>
+                                <div className="text-center animate-entrance">
+                                    <h2 className={`text-4xl font-black uppercase tracking-tighter italic drop-shadow-[0_0_15px_rgba(56,189,248,0.3)] ${isDark ? 'text-sky-400' : 'text-blue-900'}`}>DOKUMENTASI & STANDAR KERJA</h2>
+                                    <p className="text-xs font-bold text-slate-500 mt-2 uppercase tracking-[0.4em]">CV SURYA KENCANA FOOD</p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <GuideSelectCard isDark={isDark} icon="repeat" title="Alur Permintaan Barang" onClick={() => setCurrentPage('guide-request-flow')} />
+                                    <GuideSelectCard isDark={isDark} icon="shield-alert" title="Panduan K3 Umum & Listrik" onClick={() => setCurrentPage('guide-k3')} />
+                                    <GuideSelectCard isDark={isDark} icon="check-square" title="GMP 5R Lingkungan Pabrik" onClick={() => setCurrentPage('guide-gmp')} />
+                                </div>
+                            </div>
+                        ) : currentPage === 'guide-request-flow' ? (
+                            <div className="space-y-10 fade-in">
+                                <button onClick={() => setCurrentPage('guides')} className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white border hover:bg-slate-50 text-slate-700'}`}><Icon name="chevron-left" /> KEMBALI</button>
+                                <main className="max-w-[1200px] mx-auto">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        {requestFlow.map((step, idx) => (
+                                            <div key={step.id} className={`p-6 rounded-3xl flex items-center gap-6 animate-entrance ${isDark ? 'glass-card' : 'bg-white border shadow-lg'}`} style={{animationDelay: `${idx * 100}ms`}}>
+                                                <div className="step-pill">{step.id}</div>
+                                                <div>
+                                                    <h3 className={`font-black uppercase text-sm mb-1 ${isDark ? 'text-sky-400' : 'text-blue-800'}`}>{step.title}</h3>
+                                                    <p className={`text-xs font-medium leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{step.desc}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </main>
+                            </div>
+                        ) : currentPage === 'guide-k3' ? (
+                            <div className="space-y-10 fade-in">
+                                <button onClick={() => setCurrentPage('guides')} className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white border hover:bg-slate-50 text-slate-700'}`}><Icon name="chevron-left" /> KEMBALI</button>
+                                <main className="max-w-[1200px] mx-auto space-y-12">
+                                    <section className="animate-entrance">
+                                        <h2 className={`text-2xl font-black mb-6 flex items-center gap-3 ${isDark ? 'text-sky-400' : 'text-blue-900'}`}><Icon name="shield" size={28} /> K3 UMUM</h2>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-bold uppercase leading-loose">
+                                            <K3Item isDark={isDark} text="Wajib Menggunakan APD Lengkap (Sepatu Safety, Helm, Masker)" icon="check-circle" color="emerald" />
+                                            <K3Item isDark={isDark} text="Patuhi Rambu Peringatan & Jalur Hijau" icon="check-circle" color="emerald" />
+                                            <K3Item isDark={isDark} text="Pastikan Kondisi Fisik Fit Sebelum Bekerja" icon="check-circle" color="emerald" />
+                                            <K3Item isDark={isDark} text="Laporkan Segera Kondisi Tidak Aman" icon="check-circle" color="emerald" />
+                                        </div>
+                                    </section>
+                                    <section className="animate-entrance delay-200">
+                                        <h2 className="text-2xl font-black text-amber-500 mb-6 flex items-center gap-3"><Icon name="zap" size={28} /> K3 LISTRIK</h2>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-bold uppercase leading-loose">
+                                            <K3Item isDark={isDark} text="Gunakan Alat Kerja Berisolasi Standar" icon="alert-triangle" color="amber" />
+                                            <K3Item isDark={isDark} text="Prosedur LOTO Wajib Dilakukan" icon="alert-triangle" color="amber" />
+                                            <K3Item isDark={isDark} text="Jangan Bekerja Sendirian di Sirkuit Bertegangan" icon="alert-triangle" color="amber" />
+                                            <K3Item isDark={isDark} text="Periksa Grounding Panel Secara Berkala" icon="alert-triangle" color="amber" />
+                                        </div>
+                                    </section>
+                                </main>
+                            </div>
+                        ) : currentPage === 'guide-gmp' && (
+                            <div className="space-y-10 fade-in">
+                                <button onClick={() => setCurrentPage('guides')} className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white border hover:bg-slate-50 text-slate-700'}`}><Icon name="chevron-left" /> KEMBALI</button>
+                                <main className="max-w-[1200px] mx-auto space-y-6 text-center sm:text-left">
+                                    <div className={`p-8 rounded-3xl border-sky-900/30 ${isDark ? 'glass-card' : 'bg-white border shadow-lg'}`}>
+                                        <h2 className={`text-xl font-black mb-8 uppercase tracking-widest ${isDark ? 'text-sky-400' : 'text-blue-900'}`}>PRINSIP 5R (Standard Makanan)</h2>
+                                        <div className="space-y-6">
+                                            <GmpItem title="RINGKAS (SEIRI)" desc="Singkirkan barang tak perlu dari area mesin." />
+                                            <GmpItem title="RAPI (SEITON)" desc="Simpan alat di Toolbox/Shadow Board." />
+                                            <GmpItem title="RESIK (SEISO)" desc="Bersihkan oli/logam segera setelah kerja." />
+                                            <GmpItem title="RAWAT (SEIKETSU)" desc="Pertahankan standar kebersihan berkelanjutan." />
+                                            <GmpItem title="RAJIN (SHITSUKE)" desc="Jadikan 5R budaya kerja harian." />
+                                        </div>
+                                    </div>
+                                </main>
+                            </div>
+                        )}
                     </main>
+
+                    <footer className={`max-w-[1600px] mx-auto px-10 py-10 border-t mt-20 flex justify-between items-center opacity-40 ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+                        <div className="flex items-center gap-3"><Icon name="wrench" size={20} className={isDark ? 'text-sky-500' : 'text-blue-800'}/><p className="text-[10px] font-black uppercase tracking-widest">SKF Industrial Solution System</p></div>
+                        <p className="text-[10px] font-black uppercase tracking-widest">&copy; 2026 DEPT TEKNIK SKF</p>
+                    </footer>
                 </div>
             );
-        };
-
-        const MenuCard = ({ icon, title, desc, onClick, color, className }) => (
-            <button onClick={onClick} className={`group relative bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-slate-800 hover:border-sky-500/50 transition-all duration-500 text-left overflow-hidden focus:outline-none hover:-translate-y-2 active:scale-95 ${className}`}>
-                <div className="absolute -right-6 -top-6 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-700 text-sky-500"><Icon name={icon} size={150} /></div>
-                <div className={`${color} text-white p-5 rounded-2xl mb-6 shadow-lg group-hover:rotate-12 transition-transform duration-300`}><Icon name={icon} size={32} /></div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-2 leading-tight">{title}</h2>
-                <p className="text-slate-400 font-medium leading-relaxed mb-8 text-sm">{desc}</p>
-                <div className="mt-auto flex items-center gap-2 font-black text-sky-400 uppercase text-[10px] tracking-widest group-hover:gap-4 transition-all">MASUK <Icon name="arrow-right" size={16} /></div>
-            </button>
-        );
-
-        const StatCard = ({ label, count, color, icon, className }) => (
-            <div className={`glass-card p-6 rounded-[2rem] flex items-center gap-6 shadow-sm group hover:shadow-lg transition-all ${className}`}>
-                <div className={`bg-${color}-950/50 p-4 rounded-2xl text-${color}-400 animate-float shadow-inner border border-${color}-500/20`}><Icon name={icon} size={32} /></div>
-                <div><p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{label}</p><h3 className={`text-3xl font-black text-${color}-400`}>{count}</h3></div>
-            </div>
-        );
-
-        const SearchInput = ({ icon, placeholder, value, onChange }) => (
-            <div className="relative group">
-                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-sky-400 transition-colors"><Icon name={icon} size={20} /></span>
-                <input type="text" placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} className="w-full pl-14 pr-6 py-4 bg-slate-900/50 border-2 border-slate-800 rounded-2xl font-bold text-sm outline-none focus:ring-4 focus:ring-sky-500/20 focus:bg-slate-900 focus:border-sky-500/30 text-white transition-all shadow-sm placeholder-slate-600" />
-            </div>
-        );
-
-        const GuideSelectCard = ({ icon, title, onClick }) => (
-            <button onClick={onClick} className="glass-card p-8 rounded-[2rem] border border-slate-800 hover:border-sky-400/50 transition-all group flex flex-col items-center text-center gap-4 active:scale-95">
-                <div className="bg-sky-500/10 p-5 rounded-2xl text-sky-400 group-hover:scale-110 transition-transform"><Icon name={icon} size={40} /></div>
-                <h3 className="text-sm font-black text-white uppercase tracking-wider">{title}</h3>
-                <Icon name="arrow-right" className="text-slate-600 group-hover:text-sky-400 transition-colors" />
-            </button>
-        );
-
-        const GmpItem = ({ title, desc }) => (
-            <div className="flex gap-4 items-start">
-                <div className="w-1.5 h-10 bg-sky-500 rounded-full mt-1"></div>
-                <div>
-                    <h4 className="font-black text-sky-400 text-xs uppercase tracking-widest">{title}</h4>
-                    <p className="text-slate-400 text-[11px] font-bold uppercase leading-relaxed mt-1">{desc}</p>
-                </div>
-            </div>
-        );
+        }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
